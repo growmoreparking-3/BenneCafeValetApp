@@ -5,16 +5,13 @@ const axios = require('axios');
  * Sends WhatsApp template messages via ChatMitra API.
  * Falls back to MOCK mode if CHATMITRA_API_KEY or CHATMITRA_API_URL are not set.
  *
- * ⚠ IMPORTANT: The template names below must be created and approved in
- *   your ChatMitra dashboard before they will work in production.
- *
- * Templates to register in ChatMitra dashboard:
- *   - benne_cafe_otp                   (AUTHENTICATION)
- *   - benne_cafe_booking_confirmation  (UTILITY)
- *   - benne_cafe_recall_notification   (UTILITY)
- *   - benne_cafe_car_arrived           (UTILITY)
- *   - benne_cafe_handover_otp          (AUTHENTICATION)
- *   - benne_cafe_thank_you             (UTILITY)
+ * ✅ Templates registered in ChatMitra dashboard:
+ *   - benne_cafe_otp_20260719205024                    (AUTHENTICATION — APPROVED)
+ *   - benne_cafe_booking_confirmation_20260719210009   (UTILITY — PENDING)
+ *   - benne_cafe_recall_notification_20260719210758    (UTILITY — PENDING)
+ *   - benne_cafe_car_arrived_20260719210445            (UTILITY — PENDING)
+ *   - benne_cafe_handover_otp_20260719205148           (AUTHENTICATION — APPROVED)
+ *   - benne_cafe_thank_you_20260719210558              (UTILITY — PENDING)
  */
 class WhatsAppService {
   constructor() {
@@ -112,8 +109,8 @@ class WhatsAppService {
   // ─────────────────────────────────────────────────────────────
 
   /**
-   * Template: benne_cafe_otp
-   * Category: AUTHENTICATION
+   * Template: benne_cafe_otp_20260719205024
+   * Category: AUTHENTICATION — APPROVED
    * Variables: {{1}} = OTP code
    * Button: Copy Code — "Copy OTP"
    *
@@ -131,7 +128,7 @@ class WhatsAppService {
         messages: [{
           kind: 'template',
           template: {
-            name: 'benne_cafe_otp',
+            name: 'benne_cafe_otp_20260719205024',
             language: 'en_US',
             components: [
               {
@@ -148,7 +145,7 @@ class WhatsAppService {
           }
         }]
       };
-      return this._post(payload, 'benne_cafe_otp');
+      return this._post(payload, 'benne_cafe_otp_20260719205024');
     } else {
       console.log(`\n📲 MOCK WhatsApp OTP (Benne Cafe Valet): ${otp} to ${phone}\n`);
       return { success: true, mock: true };
@@ -156,8 +153,8 @@ class WhatsAppService {
   }
 
   /**
-   * Template: benne_cafe_booking_confirmation
-   * Category: UTILITY
+   * Template: benne_cafe_booking_confirmation_20260719210009
+   * Category: UTILITY — PENDING
    * Body variables: {{1}} = customerName, {{2}} = bookingId
    * Button (index 0): Call To Action (URL) — "Track my car"
    *   Base URL: https://<your-app-domain>/customer/access/
@@ -178,7 +175,7 @@ class WhatsAppService {
         messages: [{
           kind: 'template',
           template: {
-            name: 'benne_cafe_booking_confirmation',
+            name: 'benne_cafe_booking_confirmation_20260719210009',
             language: 'en_US',
             components: [
               // Body: {{1}} = customerName, {{2}} = bookingId
@@ -202,11 +199,11 @@ class WhatsAppService {
           }
         }]
       };
-      return this._post(payload, 'benne_cafe_booking_confirmation');
+      return this._post(payload, 'benne_cafe_booking_confirmation_20260719210009');
     } else {
       console.log('\n📲 MOCK WhatsApp (Benne Cafe Valet):');
       console.log(`   To       : ${to}`);
-      console.log(`   Template : benne_cafe_booking_confirmation`);
+      console.log(`   Template : benne_cafe_booking_confirmation_20260719210009`);
       console.log(`   {{1}}    : ${customerName || 'Customer'}`);
       console.log(`   {{2}}    : ${bookingId}`);
       console.log(`   [Button] : Track my car → accessToken=${accessToken}`);
@@ -216,8 +213,8 @@ class WhatsAppService {
   }
 
   /**
-   * Template: benne_cafe_recall_notification
-   * Category: UTILITY
+   * Template: benne_cafe_recall_notification_20260719210758
+   * Category: UTILITY — PENDING
    * Variables: {{1}} = bookingId, {{2}} = estimatedMinutes
    * Buttons: None
    *
@@ -227,7 +224,7 @@ class WhatsAppService {
    * - Team Benne Cafe
    */
   async sendRecallNotification(phone, bookingId, estimatedMinutes) {
-    return this.sendTemplate(phone, 'benne_cafe_recall_notification', [
+    return this.sendTemplate(phone, 'benne_cafe_recall_notification_20260719210758', [
       bookingId,
       String(estimatedMinutes)
     ]);
@@ -236,7 +233,7 @@ class WhatsAppService {
   /**
    * ── ARRIVAL NOTIFICATION — 2 messages sent back-to-back ──────────────
    *
-   * MSG 1 — Template: benne_cafe_car_arrived  (UTILITY)
+   * MSG 1 — Template: benne_cafe_car_arrived_20260719210445  (UTILITY — PENDING)
    * Variables: {{1}} = bookingId  — no auth words, passes UTILITY review
    *
    * Message:
@@ -244,7 +241,7 @@ class WhatsAppService {
    * Please proceed to collect your vehicle.
    * - Team Benne Cafe
    *
-   * MSG 2 — Template: benne_cafe_handover_otp  (AUTHENTICATION)
+   * MSG 2 — Template: benne_cafe_handover_otp_20260719205148  (AUTHENTICATION — APPROVED)
    * Variables: {{1}} = OTP  — Copy Code button
    *
    * Message:
@@ -256,7 +253,7 @@ class WhatsAppService {
     // MSG 1: UTILITY — car arrived notice
     const notify = await this.sendTemplate(
       phone,
-      'benne_cafe_car_arrived',
+      'benne_cafe_car_arrived_20260719210445',
       [bookingId]
     );
 
@@ -271,7 +268,7 @@ class WhatsAppService {
         messages: [{
           kind: 'template',
           template: {
-            name: 'benne_cafe_handover_otp',
+            name: 'benne_cafe_handover_otp_20260719205148',
             language: 'en_US',
             components: [
               {
@@ -288,7 +285,7 @@ class WhatsAppService {
           }
         }]
       };
-      otpResult = await this._post(payload, 'benne_cafe_handover_otp');
+      otpResult = await this._post(payload, 'benne_cafe_handover_otp_20260719205148');
     } else {
       console.log(`\n📲 MOCK WhatsApp Handover OTP (Benne Cafe Valet): ${otp} to ${phone}\n`);
       otpResult = { success: true, mock: true };
@@ -298,8 +295,8 @@ class WhatsAppService {
   }
 
   /**
-   * Template: benne_cafe_thank_you
-   * Category: UTILITY
+   * Template: benne_cafe_thank_you_20260719210558
+   * Category: UTILITY — PENDING
    * Variables: {{1}} = customerName, {{2}} = bookingId
    * Buttons: None
    *
@@ -309,7 +306,7 @@ class WhatsAppService {
    * - Team Benne Cafe
    */
   async sendThankYou(phone, customerName, bookingId) {
-    return this.sendTemplate(phone, 'benne_cafe_thank_you', [
+    return this.sendTemplate(phone, 'benne_cafe_thank_you_20260719210558', [
       customerName || 'Valued Customer',
       bookingId
     ]);
