@@ -68,9 +68,6 @@ const CustomerBookingForm = () => {
     if (!/^[0-9]{10}$/.test(formData.customerPhone.trim())) {
       toast.error('Please enter a valid 10-digit mobile number'); return false;
     }
-    if (!formData.customerName.trim()) {
-      toast.error('Please enter your name'); return false;
-    }
     if (formData.vehicleNumber.trim().length < 4) {
       toast.error('Vehicle number must be at least 4 characters'); return false;
     }
@@ -83,7 +80,7 @@ const CustomerBookingForm = () => {
     try {
       const data = new FormData();
       data.append('driverPhone', driverPhone);
-      data.append('customerName', formData.customerName.trim());
+      data.append('customerName', formData.customerName.trim() || formData.customerPhone.trim());
       data.append('customerPhone', formData.customerPhone.trim());
       data.append('vehicleNumber', formData.vehicleNumber.trim().toUpperCase());
       data.append('notes', '');
@@ -335,19 +332,18 @@ const CustomerBookingForm = () => {
           </div>
 
           {/* ② Name — SECOND */}
-          <div className="cbf-section">
+            <div className="cbf-section">
             <div className="cbf-section-title">
               <User size={18} /> Name
             </div>
             <div className="cbf-field">
-              <label>Full Name <span className="req">*</span></label>
+              <label>Full Name <span className="opt" style={{ color: '#9CA3AF', fontSize: '12px', fontWeight: 400 }}>(Optional)</span></label>
               <input
                 type="text"
                 name="customerName"
                 value={formData.customerName}
                 onChange={handleChange}
-                placeholder="Your full name"
-                required
+                placeholder="Your full name (or leave blank)"
               />
             </div>
           </div>
