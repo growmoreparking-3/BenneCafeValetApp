@@ -4,7 +4,7 @@ const path = require('path');
 const stream = require('stream');
 
 // Google Drive Folder ID from the shared link
-const DRIVE_FOLDER_ID = '1bEzlAaDsu0aNKflPUf-ajR2pI4LTwgnD';
+const DRIVE_FOLDER_ID = '1D7Wl7mZVEHdS4-cjsLy-Lp0D-sPify-D'; // BenneCafeValetImages
 
 // Initialize Google Drive API
 let drive = null;
