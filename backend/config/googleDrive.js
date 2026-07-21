@@ -35,17 +35,23 @@ const initCloudinary = () => {
 };
 
 // ─── Upload a single file buffer to Cloudinary ───────────────
-const uploadToCloudinary = (file) => {
+const uploadToCloudinary = (file, bookingId) => {
   return new Promise((resolve, reject) => {
+    // Folder: benne-cafe-valet/VLT12345678 (or benne-cafe-valet if no bookingId)
+    const folder = bookingId
+      ? `benne-cafe-valet/${bookingId}`
+      : 'benne-cafe-valet';
+
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: 'benne-cafe-valet',
+        folder,
         resource_type: 'image',
-        public_id: `car-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        public_id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         overwrite: false,
       },
       (error, result) => {
         if (error) return reject(error);
+        console.log(`  ✓ Uploaded to Cloudinary folder: ${folder}`);
         resolve(result.secure_url);
       }
     );
@@ -67,8 +73,8 @@ const uploadToCloudinary = (file) => {
   });
 };
 
-// ─── Upload multiple files ────────────────────────────────────
-const uploadMultipleFiles = async (files) => {
+// ─── Upload multiple files (optionally scoped to a bookingId folder) ──
+const uploadMultipleFiles = async (files, bookingId = null) => {
   if (!files || files.length === 0) return [];
 
   const ready = initCloudinary();
@@ -78,14 +84,16 @@ const uploadMultipleFiles = async (files) => {
   }
 
   try {
-    const urls = await Promise.all(files.map(uploadToCloudinary));
-    console.log(`✓ Uploaded ${urls.length} image(s) to Cloudinary`);
+    const urls = await Promise.all(files.map(f => uploadToCloudinary(f, bookingId)));
+    const folder = bookingId ? `benne-cafe-valet/${bookingId}` : 'benne-cafe-valet';
+    console.log(`✓ Uploaded ${urls.length} image(s) to Cloudinary → ${folder}`);
     return urls;
   } catch (error) {
     console.error('Cloudinary upload error:', error.message);
     return files.map(f => f.path || '');
   }
 };
+
 
 // ─── Delete a file from Cloudinary ───────────────────────────
 const deleteFromCloudinary = async (url) => {

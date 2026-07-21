@@ -80,14 +80,6 @@ router.post('/',
         }
       }
 
-      // Upload images to Google Drive and get URLs
-      let imageUrls = [];
-      if (req.files && req.files.length > 0) {
-        console.log(`Uploading ${req.files.length} images to Google Drive...`);
-        imageUrls = await uploadMultipleFiles(req.files);
-        console.log('Images uploaded successfully:', imageUrls);
-      }
-
       const booking = new Booking({
         driver: req.user._id,
         customer: {
@@ -98,7 +90,7 @@ router.post('/',
         vehicle: {
           type: vehicleType || 'car',
           number: vehicleNumber.toUpperCase(),
-          images: imageUrls,
+          images: [],
           hasValuables: hasValuables === 'true' || hasValuables === true,
           valuables: valuablesList
         },
@@ -116,6 +108,13 @@ router.post('/',
         paymentStatus: 'paid',
         status: 'parked'
       });
+
+      // Upload images to Cloudinary (scoped to bookingId folder)
+      if (req.files && req.files.length > 0) {
+        console.log(`Uploading ${req.files.length} images to Cloudinary (${booking.bookingId})...`);
+        booking.vehicle.images = await uploadMultipleFiles(req.files, booking.bookingId);
+        console.log('Images uploaded successfully:', booking.vehicle.images);
+      }
 
       await booking.save();
       await booking.populate('driver', 'name phone');
@@ -349,10 +348,10 @@ router.put('/:id', auth, authorize('driver'), upload.array('carImages', 4), asyn
       booking.vehicle.driverName = driverName;
     }
 
-    // New images (append to existing)
+    // New images (append to existing, scoped to bookingId folder)
     if (req.files && req.files.length > 0) {
       const { uploadMultipleFiles } = require('../config/googleDrive');
-      const newUrls = await uploadMultipleFiles(req.files);
+      const newUrls = await uploadMultipleFiles(req.files, booking.bookingId);
       booking.vehicle.images = [...(booking.vehicle.images || []), ...newUrls];
     }
 
@@ -445,13 +444,6 @@ router.post('/public',
         try { valuablesList = JSON.parse(valuables); } catch (e) { valuablesList = []; }
       }
 
-      // Upload images if provided
-      let imageUrls = [];
-      if (req.files && req.files.length > 0) {
-        const { uploadMultipleFiles } = require('../config/googleDrive');
-        imageUrls = await uploadMultipleFiles(req.files);
-      }
-
       const parsedAmount = paymentAmount ? parseFloat(paymentAmount) : 150;
 
       const paymentObj = isRazorpay ? {
@@ -480,7 +472,7 @@ router.post('/public',
         vehicle: {
           type: 'car',
           number: vehicleNumber.toUpperCase(),
-          images: imageUrls,
+          images: [],
           hasValuables: hasValuables === 'true' || hasValuables === true,
           valuables: valuablesList
         },
@@ -490,6 +482,12 @@ router.post('/public',
         paymentStatus: isRazorpay ? 'paid' : 'unpaid',
         status: 'parked'
       });
+
+      // Upload images if provided (scoped to bookingId folder)
+      if (req.files && req.files.length > 0) {
+        const { uploadMultipleFiles } = require('../config/googleDrive');
+        booking.vehicle.images = await uploadMultipleFiles(req.files, booking.bookingId);
+      }
 
       await booking.save();
       await booking.populate('driver', 'name phone');
