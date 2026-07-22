@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import logo from '../logo.png';
 import './ManagerDashboard.css';
 
 const ManagerDashboard = () => {
@@ -165,9 +166,12 @@ const ManagerDashboard = () => {
   return (
     <div className="manager-dashboard">
       <header className="manager-header">
-        <div className="header-left">
-          <h1>Manager Dashboard</h1>
-          <p>Welcome back, {user?.name}</p>
+        <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <img src={logo} alt="Logo" style={{ width: '42px', height: 'auto', objectFit: 'contain' }} />
+          <div>
+            <h1>Manager Dashboard</h1>
+            <p>Welcome back, {user?.name}</p>
+          </div>
         </div>
         <button onClick={handleLogout} className="logout-btn">
           <LogOut size={18} /> Logout

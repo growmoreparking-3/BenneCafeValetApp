@@ -9,6 +9,7 @@ import {
   CreditCard, CheckCircle, XCircle, BarChart2, Calendar
 } from 'lucide-react';
 import api from '../services/api';
+import logo from '../logo.png';
 import './SupervisorDashboard.css';
 
 /* ─── Mini Bar Chart (pure SVG) ──────────────────────────── */
@@ -211,7 +212,7 @@ const SupervisorDashboard = () => {
     <div className="dashboard-container">
       <header className="dashboard-header">
         <div className="header-left">
-          <Activity size={28} color="#FF6B35" />
+          <img src={logo} alt="Logo" style={{ width: '42px', height: 'auto', objectFit: 'contain' }} />
           <div>
             <h2>Supervisor Dashboard</h2>
             <p>{user?.name}</p>

@@ -4,6 +4,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
 import { Car, CheckCircle, CreditCard, ShieldCheck, AlertCircle, RefreshCw, IndianRupee, Phone, User } from 'lucide-react';
 import axios from 'axios';
+import logo from '../logo.png';
 import './CustomerBookingForm.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -239,7 +240,7 @@ const CustomerBookingForm = () => {
     return (
       <div className="cbf-page">
         <div className="cbf-error-state">
-          <Car size={60} color="#EF4444" />
+          <img src={logo} alt="Logo" style={{ width: '84px', height: 'auto', objectFit: 'contain', marginBottom: '16px' }} />
           <h2>Invalid QR Code</h2>
           <p>This QR code is not associated with a valid driver. Please contact your valet service.</p>
         </div>
@@ -297,7 +298,7 @@ const CustomerBookingForm = () => {
         {/* Header */}
         <div className="cbf-header">
           <div className="cbf-logo-ring">
-            <Car size={36} color="#FF6B35" />
+            <img src={logo} alt="Benne Cafe Valet Logo" style={{ width: '64px', height: 'auto', objectFit: 'contain' }} />
           </div>
           <h1>Benne Cafe Valet</h1>
           <p>Book your valet parking in seconds</p>

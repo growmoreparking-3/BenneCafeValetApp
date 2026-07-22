@@ -7,6 +7,7 @@ import {
   Radio, Users, FileText, TrendingUp, CreditCard
 } from 'lucide-react';
 import api from '../services/api';
+import logo from '../logo.png';
 import './AdminDashboard.css';
 
 // Components
@@ -70,9 +71,7 @@ const AdminDashboard = () => {
       {/* Header */}
       <header className="admin-header">
         <div className="admin-header-left">
-          <div className="admin-logo-mark">
-            <Shield size={22} color="white" />
-          </div>
+          <img src={logo} alt="Logo" style={{ width: '42px', height: 'auto', objectFit: 'contain' }} />
           <div className="admin-brand">
             <h1>GrowMore Admin</h1>
             <p>Control Panel</p>

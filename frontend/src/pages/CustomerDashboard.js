@@ -140,7 +140,7 @@ const CustomerDashboard = () => {
           <div className="loading">Loading your rides...</div>
         ) : bookings.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty-state">
-            <Car size={72} color="#FFB088" />
+            <img src={logo} alt="Logo" style={{ width: '80px', height: 'auto', objectFit: 'contain', marginBottom: '16px', opacity: 0.8 }} />
             <h3>No bookings yet</h3>
             <p>Your valet parking bookings will appear here</p>
           </motion.div>
