@@ -80,6 +80,29 @@ router.post('/',
         }
       }
 
+      // Fetch admin-set venue fee for driver's venue or supervisor's venue (default 100)
+      let venueFee = 100;
+      try {
+        const Venue = require('../models/Venue');
+        let venueObj = null;
+        if (req.user.venue) {
+          venueObj = await Venue.findById(req.user.venue);
+        }
+        if (!venueObj && req.user.supervisor) {
+          venueObj = await Venue.findOne({ supervisor: req.user.supervisor });
+        }
+        if (!venueObj) {
+          venueObj = await Venue.findOne({ isActive: true });
+        }
+        if (venueObj && typeof venueObj.parkingFee === 'number') {
+          venueFee = venueObj.parkingFee;
+        }
+      } catch (err) {
+        console.error('Error fetching driver venue parking fee:', err);
+      }
+
+      const calculatedAmount = paymentAmount ? parseFloat(paymentAmount) : venueFee;
+
       const booking = new Booking({
         driver: req.user._id,
         customer: {
@@ -101,7 +124,7 @@ router.post('/',
         notes,
         payment: {
           method: paymentMethod || 'cash',
-          amount: paymentAmount ? parseFloat(paymentAmount) : 150,
+          amount: calculatedAmount,
           status: paymentMethod && paymentMethod !== 'foc' ? 'completed' : (paymentMethod === 'foc' ? 'completed' : 'completed'),
           paidAt: new Date()
         },
@@ -444,7 +467,28 @@ router.post('/public',
         try { valuablesList = JSON.parse(valuables); } catch (e) { valuablesList = []; }
       }
 
-      const parsedAmount = paymentAmount ? parseFloat(paymentAmount) : 150;
+      // Fetch admin-set venue fee for driver's venue (default 100)
+      let venueFee = 100;
+      try {
+        const Venue = require('../models/Venue');
+        let venueObj = null;
+        if (driver.venue) {
+          venueObj = await Venue.findById(driver.venue);
+        }
+        if (!venueObj && driver.supervisor) {
+          venueObj = await Venue.findOne({ supervisor: driver.supervisor });
+        }
+        if (!venueObj) {
+          venueObj = await Venue.findOne({ isActive: true });
+        }
+        if (venueObj && typeof venueObj.parkingFee === 'number') {
+          venueFee = venueObj.parkingFee;
+        }
+      } catch (err) {
+        console.error('Error fetching venue parking fee for public booking:', err);
+      }
+
+      const parsedAmount = paymentAmount ? parseFloat(paymentAmount) : venueFee;
 
       const paymentObj = isRazorpay ? {
         method: 'razorpay',

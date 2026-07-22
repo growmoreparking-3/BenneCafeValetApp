@@ -255,11 +255,19 @@ router.get('/driver-info/:phone', async (req, res) => {
       return res.status(404).json({ message: 'Driver not found' });
     }
 
+    let venueObj = driver.venue;
+    if (!venueObj && driver.supervisor) {
+      venueObj = await Venue.findOne({ supervisor: driver.supervisor });
+    }
+    if (!venueObj) {
+      venueObj = await Venue.findOne({ isActive: true });
+    }
+
     res.json({
       name: driver.name,
-      parkingFee: driver.venue?.parkingFee ?? 150,
-      venueName: driver.venue?.name || null,
-      requiresUpfrontPayment: driver.venue?.requiresUpfrontPayment ?? true
+      parkingFee: venueObj?.parkingFee ?? 100,
+      venueName: venueObj?.name || null,
+      requiresUpfrontPayment: venueObj?.requiresUpfrontPayment ?? true
     });
   } catch (error) {
     console.error('Driver info error:', error);

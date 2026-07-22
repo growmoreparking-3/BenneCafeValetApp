@@ -14,7 +14,7 @@ const razorpay = new Razorpay({
 // Accessible without auth (customer fills QR form without logging in)
 router.post('/create-order', async (req, res) => {
   try {
-    const { amount = 150, currency = 'INR', notes = {} } = req.body;
+    const { amount = 100, currency = 'INR', notes = {} } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });

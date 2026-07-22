@@ -17,7 +17,7 @@ const ManageVenues = () => {
     supervisorId: '',
     isActive: true,
     parkingSpots: [],
-    parkingFee: 150
+    parkingFee: 100
   });
   const [newParkingSpot, setNewParkingSpot] = useState('');
 
@@ -71,7 +71,7 @@ const ManageVenues = () => {
       supervisorId: venue.supervisor?._id || '',
       isActive: venue.isActive,
       parkingSpots: venue.parkingSpots || [],
-      parkingFee: venue.parkingFee ?? 150
+      parkingFee: venue.parkingFee ?? 100
     });
     setShowForm(true);
   };
@@ -89,7 +89,7 @@ const ManageVenues = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', requiresUpfrontPayment: false, supervisorId: '', isActive: true, parkingSpots: [], parkingFee: 150 });
+    setFormData({ name: '', requiresUpfrontPayment: false, supervisorId: '', isActive: true, parkingSpots: [], parkingFee: 100 });
     setNewParkingSpot('');
     setEditingId(null);
     setShowForm(false);
@@ -160,7 +160,7 @@ const ManageVenues = () => {
                   onChange={(e) => setFormData({...formData, parkingFee: parseFloat(e.target.value) || 0})}
                   min="0"
                   step="10"
-                  placeholder="e.g., 150"
+                  placeholder="e.g., 100"
                   style={{ fontWeight: '700', fontSize: '16px' }}
                 />
                 <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
@@ -324,7 +324,7 @@ const ManageVenues = () => {
                 </td>
                 <td>
                   <span style={{ fontWeight: '800', fontSize: '16px', color: '#1A1A2E' }}>
-                    ₹{venue.parkingFee ?? 150}
+                    ₹{venue.parkingFee ?? 100}
                   </span>
                   <span style={{ fontSize: '11px', color: '#9CA3AF', marginLeft: '4px' }}>per visit</span>
                 </td>

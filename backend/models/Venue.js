@@ -24,7 +24,7 @@ const venueSchema = new mongoose.Schema({
   }],
   parkingFee: {
     type: Number,
-    default: 150,
+    default: 100,
     min: 0
   },
   isActive: {

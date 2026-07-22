@@ -35,7 +35,7 @@ const CustomerBookingForm = () => {
   const [driverName, setDriverName] = useState('');
   const [driverNotFound, setDriverNotFound] = useState(false);
 
-  const [paymentAmount, setPaymentAmount] = useState(150);
+  const [paymentAmount, setPaymentAmount] = useState(100);
   const [paymentMethod, setPaymentMethod] = useState('razorpay'); // razorpay | cash
   const [btnState, setBtnState] = useState('idle'); // idle | paying | booking | failed
   const [venueName, setVenueName] = useState('');

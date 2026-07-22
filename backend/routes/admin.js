@@ -405,7 +405,7 @@ router.post('/venues',
         requiresUpfrontPayment,
         supervisor: requiresUpfrontPayment ? supervisorId : null,
         parkingSpots: parkingSpots && Array.isArray(parkingSpots) ? parkingSpots.filter(spot => spot.trim() !== '') : [],
-        parkingFee: parkingFee !== undefined ? parseFloat(parkingFee) : 150
+        parkingFee: parkingFee !== undefined ? parseFloat(parkingFee) : 100
       });
 
       await venue.save();
