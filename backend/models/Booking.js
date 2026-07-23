@@ -102,8 +102,8 @@ const bookingSchema = new mongoose.Schema({
     },
     paidAt: Date,
     razorpay: {
-      orderId: String,
-      paymentId: String,
+      orderId: { type: String, index: true, sparse: true },
+      paymentId: { type: String, index: true, sparse: true },
       signature: String
     }
   },

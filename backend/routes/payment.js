@@ -2,7 +2,11 @@ const express = require('express');
 const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const { auth } = require('../middleware/auth');
+const Booking = require('../models/Booking');
+const User = require('../models/User');
+const smsService = require('../services/smsService');
+const whatsappService = require('../services/whatsappService');
+const emailService = require('../services/emailService');
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY_ID_HERE',
@@ -11,20 +15,40 @@ const razorpay = new Razorpay({
 
 // POST /api/payment/create-order
 // Creates a Razorpay order for the given amount (in rupees)
-// Accessible without auth (customer fills QR form without logging in)
+// Stores all booking details in order notes for webhook auto-creation if customer leaves page
 router.post('/create-order', async (req, res) => {
   try {
-    const { amount = 100, currency = 'INR', notes = {} } = req.body;
+    const {
+      amount = 100,
+      currency = 'INR',
+      notes = {},
+      driverPhone,
+      customerPhone,
+      customerName,
+      customerEmail,
+      vehicleNumber,
+      bookingNotes
+    } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
     }
 
+    const orderNotes = {
+      driverPhone: String(driverPhone || notes.driverPhone || '').trim(),
+      customerPhone: String(customerPhone || notes.customerPhone || '').trim(),
+      customerName: String(customerName || notes.customerName || customerPhone || '').trim(),
+      customerEmail: String(customerEmail || notes.customerEmail || '').trim(),
+      vehicleNumber: String(vehicleNumber || notes.vehicleNumber || '').trim().toUpperCase(),
+      bookingNotes: String(bookingNotes || notes.bookingNotes || '').trim(),
+      paymentAmount: String(amount || 100)
+    };
+
     const options = {
       amount: Math.round(amount * 100), // Razorpay expects paise
       currency,
       receipt: `rcpt_${Date.now()}`,
-      notes
+      notes: orderNotes
     };
 
     if (!process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'rzp_test_YOUR_KEY_ID_HERE' || process.env.RAZORPAY_KEY_SECRET === 'YOUR_KEY_SECRET_HERE') {
@@ -53,7 +77,6 @@ router.post('/create-order', async (req, res) => {
 
 // POST /api/payment/verify
 // Verifies a Razorpay payment signature
-// Used by frontend after payment modal closes
 router.post('/verify', (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -84,6 +107,185 @@ router.post('/verify', (req, res) => {
   } catch (error) {
     console.error('Razorpay verify error:', error);
     res.status(500).json({ success: false, message: 'Payment verification error' });
+  }
+});
+
+// GET /api/payment/check-booking/:orderId
+// Deduplication & recovery helper: Check if booking was already created for this Razorpay order ID
+router.get('/check-booking/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) return res.status(400).json({ found: false });
+
+    const booking = await Booking.findOne({ 'payment.razorpay.orderId': orderId })
+      .populate('driver', 'name phone');
+
+    if (booking) {
+      const accessLink = `${process.env.FRONTEND_URL || 'https://growmoreapp2-0.onrender.com'}/customer/access/${booking.accessToken}`;
+      return res.json({ found: true, booking, accessLink });
+    }
+
+    return res.json({ found: false });
+  } catch (error) {
+    console.error('Check booking error:', error);
+    res.status(500).json({ found: false, error: error.message });
+  }
+});
+
+// POST /api/payment/webhook
+// Razorpay Webhook Endpoint
+// Automatically creates booking if customer didn't wait for website redirection after payment
+router.post('/webhook', async (req, res) => {
+  try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+
+    // Signature verification (if webhook secret and signature are present)
+    if (signature && webhookSecret) {
+      const rawBody = JSON.stringify(req.body);
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(rawBody)
+        .digest('hex');
+
+      if (signature !== expectedSignature) {
+        console.warn('⚠️ Webhook signature mismatch - proceeding with caution');
+      }
+    }
+
+    const { event, payload } = req.body;
+    console.log(`\n🔔 Razorpay Webhook Received Event: ${event}`);
+
+    // Handle payment.authorized, payment.captured, order.paid
+    if (!['payment.authorized', 'payment.captured', 'order.paid'].includes(event)) {
+      return res.json({ status: 'ignored', event });
+    }
+
+    const paymentEntity = payload?.payment?.entity || {};
+    const orderEntity = payload?.order?.entity || {};
+
+    const orderId = paymentEntity.order_id || orderEntity.id;
+    const paymentId = paymentEntity.id || `pay_wh_${Date.now()}`;
+    const notes = paymentEntity.notes || orderEntity.notes || {};
+
+    if (!orderId) {
+      console.warn('⚠️ Webhook: Missing order_id in payload');
+      return res.json({ status: 'ignored', message: 'No order_id' });
+    }
+
+    // ===== DEDUPLICATION CHECK =====
+    // Check if booking already exists for this orderId or paymentId
+    let existingBooking = await Booking.findOne({
+      $or: [
+        { 'payment.razorpay.orderId': orderId },
+        { 'payment.razorpay.paymentId': paymentId }
+      ]
+    }).populate('driver', 'name phone');
+
+    if (existingBooking) {
+      console.log(`✓ Webhook Deduplication: Booking already exists for order ${orderId} (${existingBooking.bookingId})`);
+      if (paymentId && (!existingBooking.payment?.razorpay?.paymentId || existingBooking.payment.razorpay.paymentId !== paymentId)) {
+        existingBooking.payment.razorpay.paymentId = paymentId;
+        existingBooking.payment.status = 'completed';
+        existingBooking.paymentStatus = 'paid';
+        await existingBooking.save();
+      }
+      return res.status(200).json({ status: 'ok', message: 'Booking already exists', bookingId: existingBooking.bookingId });
+    }
+
+    // Extract booking details stored in Razorpay order notes
+    const {
+      driverPhone,
+      customerPhone,
+      customerName,
+      customerEmail,
+      vehicleNumber,
+      bookingNotes,
+      paymentAmount
+    } = notes;
+
+    if (!driverPhone || !customerPhone || !vehicleNumber) {
+      console.warn(`⚠️ Webhook: Missing required booking details in order ${orderId} notes:`, notes);
+      return res.status(200).json({ status: 'skipped', message: 'Incomplete booking details in order notes' });
+    }
+
+    // Find driver by phone
+    const driver = await User.findOne({ phone: driverPhone, role: 'driver' });
+    if (!driver) {
+      console.error(`✗ Webhook: Driver not found for phone: ${driverPhone}`);
+      return res.status(200).json({ status: 'skipped', message: 'Driver not found' });
+    }
+
+    const parsedAmount = paymentAmount ? parseFloat(paymentAmount) : 100;
+
+    // Create the booking automatically
+    const booking = new Booking({
+      driver: driver._id,
+      customer: {
+        phone: customerPhone.trim(),
+        name: (customerName || customerPhone).trim(),
+        email: customerEmail ? customerEmail.trim() : null
+      },
+      vehicle: {
+        type: 'car',
+        number: vehicleNumber.trim().toUpperCase(),
+        images: [],
+        hasValuables: false,
+        valuables: []
+      },
+      location: { venue: '', parkingSpot: '' },
+      notes: bookingNotes || '',
+      payment: {
+        method: 'razorpay',
+        amount: parsedAmount,
+        status: 'completed',
+        paidAt: new Date(),
+        razorpay: {
+          orderId: orderId,
+          paymentId: paymentId,
+          signature: 'webhook_verified'
+        }
+      },
+      paymentStatus: 'paid',
+      status: 'parked'
+    });
+
+    await booking.save();
+    await booking.populate('driver', 'name phone');
+
+    console.log(`🎉 Webhook: Successfully auto-created booking ${booking.bookingId} for order ${orderId}`);
+
+    // Generate access link
+    const accessLink = `${process.env.FRONTEND_URL || 'https://growmoreapp2-0.onrender.com'}/customer/access/${booking.accessToken}`;
+
+    // Send notifications
+    try {
+      await smsService.sendBookingConfirmation(customerPhone, booking.bookingId, accessLink);
+    } catch (e) { console.error('Webhook SMS failed:', e.message); }
+    try {
+      await whatsappService.sendBookingConfirmation(customerPhone, customerName || customerPhone, booking.bookingId, booking.accessToken);
+      console.log('✓ Webhook WhatsApp confirmation sent to:', customerPhone);
+    } catch (e) { console.error('Webhook WhatsApp failed:', e.message); }
+
+    if (customerEmail) {
+      try {
+        await emailService.sendBookingConfirmation(customerEmail, customerName || customerPhone, booking.bookingId, accessLink, vehicleNumber, '');
+      } catch (e) { console.error('Webhook Email failed:', e.message); }
+    }
+
+    // Notify driver live via Socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`driver-${driver._id}`).emit('new-customer-booking', {
+        bookingId: booking.bookingId,
+        booking: booking.toObject()
+      });
+    }
+
+    return res.status(200).json({ status: 'ok', message: 'Booking created via webhook', bookingId: booking.bookingId });
+  } catch (error) {
+    console.error('Razorpay Webhook Error:', error);
+    return res.status(200).json({ status: 'error', error: error.message });
   }
 });
 

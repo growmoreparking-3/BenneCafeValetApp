@@ -453,6 +453,26 @@ router.post('/public',
         }
 
         console.log('✓ Razorpay payment verified for public booking. PaymentId:', razorpayPaymentId);
+
+        // ===== DEDUPLICATION CHECK =====
+        const queryConds = [];
+        if (razorpayOrderId) queryConds.push({ 'payment.razorpay.orderId': razorpayOrderId });
+        if (razorpayPaymentId) queryConds.push({ 'payment.razorpay.paymentId': razorpayPaymentId });
+
+        if (queryConds.length > 0) {
+          const existingBooking = await Booking.findOne({ $or: queryConds })
+            .populate('driver', 'name phone');
+
+          if (existingBooking) {
+            console.log(`✓ Public API Deduplication: Booking already exists for order ${razorpayOrderId} (${existingBooking.bookingId})`);
+            const accessLink = `${process.env.FRONTEND_URL || 'https://growmoreapp2-0.onrender.com'}/customer/access/${existingBooking.accessToken}`;
+            return res.status(200).json({
+              message: 'Booking already exists',
+              booking: existingBooking,
+              accessLink
+            });
+          }
+        }
       }
 
       // Find driver by phone

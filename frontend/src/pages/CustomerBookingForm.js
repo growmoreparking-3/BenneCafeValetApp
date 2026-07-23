@@ -42,7 +42,7 @@ const CustomerBookingForm = () => {
   const [venueName, setVenueName] = useState('');
   const [venueLoading, setVenueLoading] = useState(true);
 
-  // Fetch driver name + venue parking fee
+  // Fetch driver name + venue parking fee & check pending booking
   useEffect(() => {
     if (!driverPhone) { setDriverNotFound(true); return; }
     const verify = async () => {
@@ -58,6 +58,25 @@ const CustomerBookingForm = () => {
       }
     };
     verify();
+
+    // Deduplication / Recovery check if customer paid but refreshed or reopened page
+    const pendingOrderId = sessionStorage.getItem('pending_booking_order_id');
+    if (pendingOrderId) {
+      axios.get(`${API_URL}/api/payment/check-booking/${pendingOrderId}`)
+        .then(res => {
+          if (res.data.found && res.data.booking) {
+            console.log('✓ Pending booking recovered:', res.data.booking.bookingId);
+            setCreatedBookingId(res.data.booking.bookingId);
+            if (res.data.booking.payment?.razorpay?.paymentId) {
+              setPaymentIdDisplay(res.data.booking.payment.razorpay.paymentId);
+            }
+            setSubmitted(true);
+            sessionStorage.removeItem('pending_booking_order_id');
+            toast.success('Your booking is confirmed!');
+          }
+        })
+        .catch(err => console.log('Check pending booking error:', err));
+    }
   }, [driverPhone]);
 
   const handleChange = (e) => {
@@ -102,6 +121,7 @@ const CustomerBookingForm = () => {
       setCreatedBookingId(res.data.booking.bookingId);
       if (paymentData) setPaymentIdDisplay(paymentData.paymentId);
       setSubmitted(true);
+      sessionStorage.removeItem('pending_booking_order_id');
       toast.success('Booking created!');
     } catch (err) {
       setBtnState('failed');
@@ -135,8 +155,21 @@ const CustomerBookingForm = () => {
     try {
       const { data } = await axios.post(`${API_URL}/api/payment/create-order`, {
         amount: paymentAmount,
-        notes: { customerPhone: formData.customerPhone, customerName: formData.customerName }
+        driverPhone,
+        customerPhone: formData.customerPhone,
+        customerName: formData.customerName || formData.customerPhone,
+        vehicleNumber: formData.vehicleNumber,
+        notes: {
+          driverPhone,
+          customerPhone: formData.customerPhone,
+          customerName: formData.customerName || formData.customerPhone,
+          vehicleNumber: formData.vehicleNumber
+        }
       });
+
+      if (data.orderId) {
+        sessionStorage.setItem('pending_booking_order_id', data.orderId);
+      }
 
       // ── Mock mode ──
       if (data.orderId && data.orderId.startsWith('mock_order_')) {
