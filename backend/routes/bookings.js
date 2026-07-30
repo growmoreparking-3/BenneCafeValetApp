@@ -415,7 +415,7 @@ router.post('/public',
   [
     body('driverPhone').notEmpty().withMessage('Driver phone is required'),
     body('customerPhone').isMobilePhone().withMessage('Invalid customer phone'),
-    body('customerName').trim().notEmpty().withMessage('Customer name is required'),
+    body('customerName').optional().trim(),
     body('vehicleNumber').trim().isLength({ min: 4 }).withMessage('Vehicle number must be at least 4 characters'),
   ],
   async (req, res) => {
@@ -530,7 +530,7 @@ router.post('/public',
         driver: driver._id,
         customer: {
           phone: customerPhone,
-          name: customerName,
+          name: customerName || customerPhone,
           email: customerEmail || null
         },
         vehicle: {
