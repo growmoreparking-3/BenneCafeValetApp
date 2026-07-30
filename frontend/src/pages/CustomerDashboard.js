@@ -6,7 +6,7 @@ import { useSocket } from '../context/SocketContext';
 import toast from 'react-hot-toast';
 import { LogOut, Car, Clock, AlertCircle, CheckCircle, MapPin } from 'lucide-react';
 import api from '../services/api';
-import logo from '../logo.png';
+
 import './CustomerDashboard.css';
 
 const STEPS = [
@@ -122,7 +122,6 @@ const CustomerDashboard = () => {
     <div className="dashboard-container">
       <header className="dashboard-header">
         <div className="header-left">
-          <img src={logo} alt="GrowMore Logo" style={{ width: '38px', height: 'auto', objectFit: 'contain' }} />
           <div>
             <h2>My Rides</h2>
             <p>{user?.name || user?.phone}</p>
@@ -140,7 +139,6 @@ const CustomerDashboard = () => {
           <div className="loading">Loading your rides...</div>
         ) : bookings.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="empty-state">
-            <img src={logo} alt="Logo" style={{ width: '80px', height: 'auto', objectFit: 'contain', marginBottom: '16px', opacity: 0.8 }} />
             <h3>No bookings yet</h3>
             <p>Your valet parking bookings will appear here</p>
           </motion.div>

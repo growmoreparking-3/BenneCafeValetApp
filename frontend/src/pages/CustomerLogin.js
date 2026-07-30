@@ -64,9 +64,6 @@ const CustomerLogin = () => {
           animate={{ opacity: 1, y: 0 }}
           className="login-header"
         >
-          <div className="logo-small">
-            <img src={require('../logo.png')} alt="Logo" style={{ width: '240px', height: 'auto', objectFit: 'contain' }} />
-          </div>
         </motion.div>
 
         {step === 1 ? (

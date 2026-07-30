@@ -44,9 +44,6 @@ const CustomerAccess = () => {
           transition={{ duration: 0.5 }}
           className="login-header"
         >
-          <div className="logo-small">
-            <img src={require('../logo.png')} alt="Logo" style={{ width: '240px', height: 'auto', objectFit: 'contain' }} />
-          </div>
           {loading && (
             <motion.div
               animate={{ rotate: 360 }}

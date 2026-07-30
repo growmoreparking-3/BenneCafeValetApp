@@ -4,7 +4,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
 import { Car, CheckCircle, CreditCard, ShieldCheck, AlertCircle, RefreshCw, IndianRupee, Phone } from 'lucide-react';
 import axios from 'axios';
-import logo from '../logo.png';
+
 import './CustomerBookingForm.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -274,7 +274,6 @@ const CustomerBookingForm = () => {
     return (
       <div className="cbf-page">
         <div className="cbf-error-state">
-          <img src={logo} alt="Logo" style={{ width: '84px', height: 'auto', objectFit: 'contain', marginBottom: '16px' }} />
           <h2>Invalid QR Code</h2>
           <p>This QR code is not associated with a valid driver. Please contact your valet service.</p>
         </div>
@@ -356,15 +355,7 @@ const CustomerBookingForm = () => {
             >
               {/* Logo */}
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <div style={{
-                  width: '64px', height: '64px', background: '#F2EFE9',
-                  borderRadius: '18px', display: 'inline-flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid rgba(204,119,34,0.2)',
-                  marginBottom: '14px',
-                }}>
-                  <img src={logo} alt="Benne Logo" style={{ width: '44px', height: 'auto', objectFit: 'contain' }} />
-                </div>
+  
                 <h2 style={{
                   fontFamily: "'Lora', serif",
                   fontSize: '20px', fontWeight: 700,
@@ -462,9 +453,6 @@ const CustomerBookingForm = () => {
       >
         {/* Header */}
         <div className="cbf-header">
-          <div className="cbf-logo-ring">
-            <img src={logo} alt="Benne Cafe Valet Logo" style={{ width: '64px', height: 'auto', objectFit: 'contain' }} />
-          </div>
           <h1>Valet Service for Benne</h1>
           <p>Book your valet parking in seconds</p>
         </div>
