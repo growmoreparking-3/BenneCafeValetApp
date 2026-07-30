@@ -383,63 +383,23 @@ const CustomerBookingForm = () => {
                 <p style={{ margin: 0, fontWeight: 700, color: '#CC7722' }}>Hope you enjoy your meal! 🍽️</p>
               </div>
 
-              {/* Checkbox */}
-              <label style={{
-                display: 'flex', alignItems: 'flex-start', gap: '12px',
-                cursor: 'pointer', marginBottom: '20px',
-                padding: '14px 16px',
-                background: disclaimerChecked ? 'rgba(204,119,34,0.08)' : '#F2EFE9',
-                borderRadius: '12px',
-                border: disclaimerChecked ? '2px solid rgba(204,119,34,0.35)' : '2px solid #DDD8CC',
-                transition: 'all 0.2s',
-              }}>
-                <div
-                  onClick={() => setDisclaimerChecked(v => !v)}
-                  style={{
-                    width: '22px', height: '22px', minWidth: '22px',
-                    borderRadius: '6px', marginTop: '1px',
-                    border: disclaimerChecked ? 'none' : '2.5px solid #C4BDB0',
-                    background: disclaimerChecked ? '#CC7722' : 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s', cursor: 'pointer',
-                  }}
-                >
-                  {disclaimerChecked && (
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M2.5 7L5.5 10L11.5 4" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </div>
-                <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#353535', lineHeight: '1.4', fontFamily: "'Lato', sans-serif", userSelect: 'none' }}
-                  onClick={() => setDisclaimerChecked(v => !v)}
-                >
-                  Got it — I understand and agree to the above terms
-                </span>
-              </label>
-
               {/* CTA Button */}
               <button
                 onClick={() => {
-                  if (!disclaimerChecked) {
-                    toast.error('Please check the box to proceed');
-                    return;
-                  }
                   setDisclaimerAccepted(true);
                 }}
                 style={{
                   width: '100%', padding: '14px',
-                  background: disclaimerChecked
-                    ? 'linear-gradient(135deg, #CC7722, #D98D3A)'
-                    : '#C4BDB0',
+                  background: 'linear-gradient(135deg, #CC7722, #D98D3A)',
                   color: 'white', border: 'none',
                   borderRadius: '12px', fontSize: '16px',
                   fontWeight: 700, fontFamily: "'Lato', sans-serif",
-                  cursor: disclaimerChecked ? 'pointer' : 'not-allowed',
+                  cursor: 'pointer',
                   transition: 'all 0.25s',
-                  boxShadow: disclaimerChecked ? '0 4px 16px rgba(204,119,34,0.3)' : 'none',
+                  boxShadow: '0 4px 16px rgba(204,119,34,0.3)',
                 }}
               >
-                Proceed to Booking →
+                Got it, Proceed to Booking →
               </button>
             </motion.div>
           </motion.div>
