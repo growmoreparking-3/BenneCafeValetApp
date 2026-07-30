@@ -382,6 +382,7 @@ const MyBookings = () => {
   const [paymentMethod,     setPaymentMethod]     = useState('cash');
   const [activeTab,         setActiveTab]         = useState('active');
   const [editingBooking,    setEditingBooking]    = useState(null);  // booking being edited
+  const [arrivalTimes,      setArrivalTimes]      = useState({});
 
   useEffect(() => {
     fetchBookings();
@@ -415,13 +416,14 @@ const MyBookings = () => {
     );
   };
 
-  // Auto-set arrival time to 10 minutes (fixed for Benne Cafe)
-  const handleEstimateArrival = async (bookingId) => {
+  // Set arrival time
+  const handleEstimateArrival = async (bookingId, mins) => {
     if (processingId) return;
     setProcessingId(bookingId);
     try {
-      await api.post(`/bookings/${bookingId}/estimate-arrival`, { estimatedMinutes: 10 });
-      toast.success('Car recalled! Customer notified — arriving in 10 min.');
+      const minutesToUse = mins !== undefined ? parseInt(mins) : 10;
+      await api.post(`/bookings/${bookingId}/estimate-arrival`, { estimatedMinutes: minutesToUse });
+      toast.success(`Car recalled! Customer notified — arriving in ${minutesToUse} min.`);
       setSelectedBooking(null);
       fetchBookings();
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to recall car'); }
@@ -653,20 +655,41 @@ const MyBookings = () => {
                           </div>
                         )}
 
-                        {/* Recall requested — auto 10 min */}
-                        {booking.status === 'recall-requested' && (
-                          <div className="action-section">
-                            <AlertCircle size={20} color="#F59E0B" />
-                            <p className="action-title">Customer requested recall!</p>
-                            <button
-                              className="action-btn primary"
-                              onClick={() => handleEstimateArrival(booking._id)}
-                              disabled={processingId === booking._id}
-                            >
-                              {processingId === booking._id ? 'Processing...' : '🚗 Recall Car (10 min)'}
-                            </button>
-                          </div>
-                        )}
+                         {/* Recall requested — show input field prefilled with 10, and button to Set Arrival Time */}
+                         {booking.status === 'recall-requested' && (
+                           <div className="action-section" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                               <AlertCircle size={20} color="#F59E0B" />
+                               <p className="action-title" style={{ margin: 0 }}>Customer requested recall!</p>
+                             </div>
+                             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                               <input
+                                 type="number"
+                                 min="1"
+                                 max="120"
+                                 value={arrivalTimes[booking._id] !== undefined ? arrivalTimes[booking._id] : 10}
+                                 onChange={(e) => setArrivalTimes({ ...arrivalTimes, [booking._id]: e.target.value })}
+                                 style={{
+                                   width: '80px',
+                                   padding: '10px',
+                                   borderRadius: '8px',
+                                   border: '2px solid #DDD8CC',
+                                   fontSize: '14px',
+                                   fontWeight: 'bold',
+                                   textAlign: 'center'
+                                 }}
+                               />
+                               <button
+                                 className="action-btn primary"
+                                 style={{ flex: 1, margin: 0 }}
+                                 onClick={() => handleEstimateArrival(booking._id, arrivalTimes[booking._id] !== undefined ? arrivalTimes[booking._id] : 10)}
+                                 disabled={processingId === booking._id}
+                               >
+                                 {processingId === booking._id ? 'Processing...' : 'Set Arrival Time'}
+                               </button>
+                             </div>
+                           </div>
+                         )}
 
                         {/* In transit */}
                         {booking.status === 'in-transit' && (
