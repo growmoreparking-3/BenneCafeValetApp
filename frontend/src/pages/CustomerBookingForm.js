@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
-import { Car, CheckCircle, CreditCard, ShieldCheck, AlertCircle, RefreshCw, IndianRupee, Phone, User } from 'lucide-react';
+import { Car, CheckCircle, CreditCard, ShieldCheck, AlertCircle, RefreshCw, IndianRupee, Phone } from 'lucide-react';
 import axios from 'axios';
 import logo from '../logo.png';
 import './CustomerBookingForm.css';
@@ -26,7 +26,6 @@ const CustomerBookingForm = () => {
 
   const [formData, setFormData] = useState({
     customerPhone: '',
-    customerName: '',
     vehicleNumber: '',
   });
   const [loading, setLoading] = useState(false);
@@ -35,6 +34,8 @@ const CustomerBookingForm = () => {
   const [paymentIdDisplay, setPaymentIdDisplay] = useState('');
   const [driverName, setDriverName] = useState('');
   const [driverNotFound, setDriverNotFound] = useState(false);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+  const [disclaimerChecked, setDisclaimerChecked] = useState(false);
 
   const [paymentAmount, setPaymentAmount] = useState(100);
   const [paymentMethod, setPaymentMethod] = useState('razorpay'); // razorpay | cash
@@ -100,7 +101,7 @@ const CustomerBookingForm = () => {
     try {
       const data = new FormData();
       data.append('driverPhone', driverPhone);
-      data.append('customerName', formData.customerName.trim() || formData.customerPhone.trim());
+      data.append('customerName', formData.customerPhone.trim());
       data.append('customerPhone', formData.customerPhone.trim());
       data.append('vehicleNumber', formData.vehicleNumber.trim().toUpperCase());
       data.append('notes', '');
@@ -157,12 +158,12 @@ const CustomerBookingForm = () => {
         amount: paymentAmount,
         driverPhone,
         customerPhone: formData.customerPhone,
-        customerName: formData.customerName || formData.customerPhone,
+        customerName: formData.customerPhone,
         vehicleNumber: formData.vehicleNumber,
         notes: {
           driverPhone,
           customerPhone: formData.customerPhone,
-          customerName: formData.customerName || formData.customerPhone,
+          customerName: formData.customerPhone,
           vehicleNumber: formData.vehicleNumber
         }
       });
@@ -323,6 +324,137 @@ const CustomerBookingForm = () => {
     <div className="cbf-page">
       <Toaster position="top-center" />
 
+      {/* ─── Disclaimer Popup ───────────────────────────── */}
+      <AnimatePresence>
+        {!disclaimerAccepted && (
+          <motion.div
+            key="disclaimer-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
+              background: 'rgba(53, 53, 53, 0.65)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '24px 16px',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.88, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.88, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '20px',
+                padding: '32px 28px 28px',
+                maxWidth: '420px',
+                width: '100%',
+                boxShadow: '0 20px 60px rgba(53,53,53,0.3)',
+                border: '2px solid rgba(204,119,34,0.18)',
+              }}
+            >
+              {/* Logo */}
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <div style={{
+                  width: '64px', height: '64px', background: '#F2EFE9',
+                  borderRadius: '18px', display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  border: '2px solid rgba(204,119,34,0.2)',
+                  marginBottom: '14px',
+                }}>
+                  <img src={logo} alt="Benne Logo" style={{ width: '44px', height: 'auto', objectFit: 'contain' }} />
+                </div>
+                <h2 style={{
+                  fontFamily: "'Lora', serif",
+                  fontSize: '20px', fontWeight: 700,
+                  color: '#353535', margin: '0 0 4px',
+                }}>Welcome to Benne</h2>
+                <p style={{ fontSize: '13px', color: '#7A6E63', margin: 0 }}>Please read before proceeding</p>
+              </div>
+
+              {/* Message */}
+              <div style={{
+                background: '#F9F7F3',
+                border: '1.5px solid rgba(204,119,34,0.2)',
+                borderRadius: '14px',
+                padding: '18px 20px',
+                marginBottom: '22px',
+                lineHeight: '1.75',
+                fontSize: '14px',
+                color: '#454039',
+                fontFamily: "'Lato', sans-serif",
+              }}>
+                <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#CC7722' }}>Thank you for visiting Benne.</p>
+                <p style={{ margin: '0 0 8px' }}>Valet services are provided for your convenience. While every care is taken, <strong>Benne cannot be responsible for theft or damage to the vehicle.</strong></p>
+                <p style={{ margin: '0 0 8px' }}>Please ensure <strong>valuable items are safe with you</strong>, outside the car.</p>
+                <p style={{ margin: '0 0 8px' }}>Please allow us <strong>15 mins</strong> to bring the vehicle back to you.</p>
+                <p style={{ margin: 0, fontWeight: 700, color: '#CC7722' }}>Hope you enjoy your meal! 🍽️</p>
+              </div>
+
+              {/* Checkbox */}
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: '12px',
+                cursor: 'pointer', marginBottom: '20px',
+                padding: '14px 16px',
+                background: disclaimerChecked ? 'rgba(204,119,34,0.08)' : '#F2EFE9',
+                borderRadius: '12px',
+                border: disclaimerChecked ? '2px solid rgba(204,119,34,0.35)' : '2px solid #DDD8CC',
+                transition: 'all 0.2s',
+              }}>
+                <div
+                  onClick={() => setDisclaimerChecked(v => !v)}
+                  style={{
+                    width: '22px', height: '22px', minWidth: '22px',
+                    borderRadius: '6px', marginTop: '1px',
+                    border: disclaimerChecked ? 'none' : '2.5px solid #C4BDB0',
+                    background: disclaimerChecked ? '#CC7722' : 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s', cursor: 'pointer',
+                  }}
+                >
+                  {disclaimerChecked && (
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2.5 7L5.5 10L11.5 4" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+                <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#353535', lineHeight: '1.4', fontFamily: "'Lato', sans-serif", userSelect: 'none' }}
+                  onClick={() => setDisclaimerChecked(v => !v)}
+                >
+                  Got it — I understand and agree to the above terms
+                </span>
+              </label>
+
+              {/* CTA Button */}
+              <button
+                onClick={() => {
+                  if (!disclaimerChecked) {
+                    toast.error('Please check the box to proceed');
+                    return;
+                  }
+                  setDisclaimerAccepted(true);
+                }}
+                style={{
+                  width: '100%', padding: '14px',
+                  background: disclaimerChecked
+                    ? 'linear-gradient(135deg, #CC7722, #D98D3A)'
+                    : '#C4BDB0',
+                  color: 'white', border: 'none',
+                  borderRadius: '12px', fontSize: '16px',
+                  fontWeight: 700, fontFamily: "'Lato', sans-serif",
+                  cursor: disclaimerChecked ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.25s',
+                  boxShadow: disclaimerChecked ? '0 4px 16px rgba(204,119,34,0.3)' : 'none',
+                }}
+              >
+                Proceed to Booking →
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -333,13 +465,8 @@ const CustomerBookingForm = () => {
           <div className="cbf-logo-ring">
             <img src={logo} alt="Benne Cafe Valet Logo" style={{ width: '64px', height: 'auto', objectFit: 'contain' }} />
           </div>
-          <h1>Benne Cafe Valet</h1>
+          <h1>Valet Service for Benne</h1>
           <p>Book your valet parking in seconds</p>
-          {driverName && (
-            <div className="cbf-driver-badge">
-              <span>👋 Served by <strong>{driverName}</strong></span>
-            </div>
-          )}
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); handlePayAndBook(); }} className="cbf-form">
@@ -350,7 +477,6 @@ const CustomerBookingForm = () => {
               <Phone size={18} /> Mobile Number
             </div>
             <div className="cbf-field">
-              <label>Mobile Number <span className="req">*</span></label>
               <input
                 type="tel"
                 name="customerPhone"
@@ -365,39 +491,18 @@ const CustomerBookingForm = () => {
             </div>
           </div>
 
-          {/* ② Name — SECOND */}
-            <div className="cbf-section">
-            <div className="cbf-section-title">
-              <User size={18} /> Name
-            </div>
-            <div className="cbf-field">
-              <label>Full Name <span className="opt" style={{ color: '#9CA3AF', fontSize: '12px', fontWeight: 400 }}>(Optional)</span></label>
-              <input
-                type="text"
-                name="customerName"
-                value={formData.customerName}
-                onChange={handleChange}
-                placeholder="Your full name (or leave blank)"
-              />
-            </div>
-          </div>
-
-          {/* ③ Vehicle Number */}
+          {/* ② Vehicle Number */}
           <div className="cbf-section">
             <div className="cbf-section-title">
               <Car size={18} /> Vehicle Number
             </div>
             <div className="cbf-field">
-              <label>
-                Vehicle Number <span className="req">*</span>
-                <span className="cbf-hint"> (full plate or last 4 digits)</span>
-              </label>
               <input
                 type="text"
                 name="vehicleNumber"
                 value={formData.vehicleNumber}
                 onChange={handleChange}
-                placeholder="MH12AB1234 or 1234"
+                placeholder="MH12AB1234 or last 4 digits"
                 minLength="4"
                 required
                 style={{ textTransform: 'uppercase' }}
@@ -434,12 +539,12 @@ const CustomerBookingForm = () => {
                   type="button"
                   style={{
                     flex: 1, padding: '12px', borderRadius: '10px',
-                    border: paymentMethod === 'razorpay' ? '2.5px solid #FF6B35' : '2px solid #E5E7EB',
-                    background: paymentMethod === 'razorpay' ? '#FFF5F2' : '#FAFAFA',
-                    color: paymentMethod === 'razorpay' ? '#FF6B35' : '#374151',
+                    border: paymentMethod === 'razorpay' ? '2.5px solid #CC7722' : '2px solid #DDD8CC',
+                    background: paymentMethod === 'razorpay' ? '#F9F7F3' : '#F9F8F5',
+                    color: paymentMethod === 'razorpay' ? '#CC7722' : '#454039',
                     fontWeight: '700', cursor: 'pointer', display: 'flex',
                     alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    fontFamily: "'Inter', sans-serif", fontSize: '14px', transition: 'all 0.2s'
+                    fontFamily: "'Lato', sans-serif", fontSize: '14px', transition: 'all 0.2s'
                   }}
                   onClick={() => { setPaymentMethod('razorpay'); setBtnState('idle'); }}
                 >
@@ -449,12 +554,12 @@ const CustomerBookingForm = () => {
                   type="button"
                   style={{
                     flex: 1, padding: '12px', borderRadius: '10px',
-                    border: paymentMethod === 'cash' ? '2.5px solid #FF6B35' : '2px solid #E5E7EB',
-                    background: paymentMethod === 'cash' ? '#FFF5F2' : '#FAFAFA',
-                    color: paymentMethod === 'cash' ? '#FF6B35' : '#374151',
+                    border: paymentMethod === 'cash' ? '2.5px solid #CC7722' : '2px solid #DDD8CC',
+                    background: paymentMethod === 'cash' ? '#F9F7F3' : '#F9F8F5',
+                    color: paymentMethod === 'cash' ? '#CC7722' : '#454039',
                     fontWeight: '700', cursor: 'pointer', display: 'flex',
                     alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    fontFamily: "'Inter', sans-serif", fontSize: '14px', transition: 'all 0.2s'
+                    fontFamily: "'Lato', sans-serif", fontSize: '14px', transition: 'all 0.2s'
                   }}
                   onClick={() => { setPaymentMethod('cash'); setBtnState('idle'); }}
                 >

@@ -1,7 +1,7 @@
 /* ==================== CUSTOMER DASHBOARD ==================== */
 .dashboard-container {
   min-height: 100vh;
-  background: #FFF8F5;
+  background: #F2EFE9;
   display: flex;
   flex-direction: column;
 }
@@ -17,7 +17,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  border-bottom: 2px solid rgba(255, 107, 53, 0.1);
+  border-bottom: 2px solid rgba(204, 119, 34, 0.1);
 }
 
 .header-left {
@@ -28,8 +28,9 @@
 
 .header-left h2 {
   font-size: 18px;
-  font-weight: 800;
-  color: #1A1A2E;
+  font-weight: 700;
+  font-family: 'Lora', serif;
+  color: #353535;
   margin: 0;
 }
 
@@ -50,9 +51,9 @@
   color: #EF4444;
   border: 2px solid #FECACA;
   border-radius: 10px;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -117,14 +118,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #FFF5F0 0%, #FFF8F5 100%);
-  border-bottom: 1px solid rgba(255, 107, 53, 0.08);
+  background: linear-gradient(135deg, #F2EFE9 0%, #EBE5D8 100%);
+  border-bottom: 1px solid rgba(204, 119, 34, 0.08);
 }
 
 .booking-header h3 {
   font-size: 15px;
   font-weight: 800;
-  color: #FF6B35;
+  color: #CC7722;
   margin: 0;
   font-family: 'Courier New', monospace;
 }
@@ -155,7 +156,7 @@
   display: flex;
   align-items: center;
   padding: 14px 20px;
-  background: #F9FAFB;
+  background: #F9F8F5;
   gap: 0;
   overflow-x: auto;
 }
@@ -199,16 +200,16 @@
 }
 
 .step.done .step-dot {
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
-  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.35);
+  background: linear-gradient(135deg, #CC7722, #D98D3A);
+  box-shadow: 0 2px 8px rgba(204, 119, 34, 0.35);
 }
 
 .step.current .step-dot {
-  background: linear-gradient(135deg, #FF6B35, #FF8C5A);
+  background: linear-gradient(135deg, #CC7722, #D98D3A);
   animation: pulse-ring 2s ease-out infinite;
 }
 
-.step.done::after { background: linear-gradient(90deg, #FF6B35, #FF8C5A); }
+.step.done::after { background: linear-gradient(90deg, #CC7722, #D98D3A); }
 
 .step-label {
   font-size: 10px;
@@ -219,7 +220,7 @@
 }
 
 .step.done .step-label,
-.step.current .step-label { color: #FF6B35; }
+.step.current .step-label { color: #CC7722; }
 
 /* ---- CARD BODY ---- */
 .booking-details {
@@ -277,7 +278,7 @@
 }
 
 .otp-banner span { font-size: 12px; color: #92400E; font-weight: 500; }
-.otp-banner strong { font-size: 28px; font-weight: 900; color: #FF6B35; letter-spacing: 0.12em; line-height: 1; }
+.otp-banner strong { font-size: 28px; font-weight: 900; color: #CC7722; letter-spacing: 0.12em; line-height: 1; }
 
 .completed-banner {
   display: flex;
@@ -293,7 +294,7 @@
   border: 1px solid #A7F3D0;
 }
 
-/* Recall Button */
+/* Call for Car Button */
 .recall-btn {
   display: flex;
   align-items: center;
@@ -302,22 +303,22 @@
   width: calc(100% - 40px);
   margin: 0 20px 20px;
   padding: 14px;
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8C5A 100%);
+  background: linear-gradient(135deg, #CC7722 0%, #D98D3A 100%);
   color: white;
   border: none;
   border-radius: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.35);
+  box-shadow: 0 6px 20px rgba(204, 119, 34, 0.35);
   letter-spacing: 0.01em;
 }
 
 .recall-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 28px rgba(255, 107, 53, 0.45);
+  box-shadow: 0 10px 28px rgba(204, 119, 34, 0.45);
 }
 
 .loading {

@@ -11,7 +11,7 @@ import './CustomerDashboard.css';
 
 const STEPS = [
   { key: 'parked',           label: 'Parked' },
-  { key: 'recall-requested', label: 'Recalled' },
+  { key: 'recall-requested', label: 'Call for Car' },
   { key: 'in-transit',       label: 'En Route' },
   { key: 'arrived',          label: 'Arrived' },
   { key: 'completed',        label: 'Done' },
@@ -212,7 +212,7 @@ const CustomerDashboard = () => {
 
                 {booking.status === 'parked' && (
                   <button className="recall-btn" onClick={() => handleRecallCar(booking._id)}>
-                    🚗 Recall My Car
+                    🚗 Call for Car
                   </button>
                 )}
 
