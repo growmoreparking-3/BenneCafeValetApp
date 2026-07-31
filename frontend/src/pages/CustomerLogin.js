@@ -119,20 +119,6 @@ const CustomerLogin = () => {
               <small>OTP sent to {phone}</small>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="name">Your Name (Optional)</label>
-              <div className="input-wrapper">
-                <input
-                  type="text"
-                  id="name"
-                  placeholder="Enter your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{ paddingLeft: '14px' }}
-                />
-              </div>
-            </div>
-
             <button type="submit" className="submit-btn" disabled={loading}>
               {loading ? 'Verifying...' : 'Verify & Login'}
             </button>
