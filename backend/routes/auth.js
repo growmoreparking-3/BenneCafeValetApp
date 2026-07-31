@@ -192,6 +192,13 @@ router.get('/customer/access/:token', async (req, res) => {
       return res.status(404).json({ message: 'Invalid or expired link' });
     }
 
+    // Check 8-hour expiry window from when the link was created
+    const LINK_EXPIRY_MS = 8 * 60 * 60 * 1000; // 8 hours
+    const tokenAge = Date.now() - new Date(booking.accessTokenCreatedAt || booking.createdAt).getTime();
+    if (tokenAge > LINK_EXPIRY_MS) {
+      return res.status(401).json({ message: 'This link has expired. Please log in via the customer login page.' });
+    }
+
     // Find or create customer user
     let user = await User.findOne({ 
       phone: booking.customer.phone, 

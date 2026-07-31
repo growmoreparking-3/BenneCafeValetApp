@@ -21,7 +21,7 @@ const emailService = require("./services/emailService");
 // ✅ Socket.io setup
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "https://growmoreapp2-0.onrender.com",
+    origin: process.env.FRONTEND_URL || "https://bennecafevaletapp.onrender.com",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -44,7 +44,7 @@ app.use(
 
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL, "https://growmoreapp2-0.onrender.com"].filter(Boolean),
+    origin: [process.env.FRONTEND_URL, "https://bennecafevaletapp.onrender.com"].filter(Boolean),
     credentials: true,
   })
 );

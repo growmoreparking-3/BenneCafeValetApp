@@ -151,7 +151,7 @@ router.post('/',
       });
 
       // Generate direct access link with token
-      const accessLink = `${process.env.FRONTEND_URL || 'https://growmoreapp2-0.onrender.com'}/customer/access/${booking.accessToken}`;
+      const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${booking.accessToken}`;
       console.log('📱 Access link generated:', accessLink);
       console.log('🔑 Access Token:', booking.accessToken);
 
@@ -465,7 +465,7 @@ router.post('/public',
 
           if (existingBooking) {
             console.log(`✓ Public API Deduplication: Booking already exists for order ${razorpayOrderId} (${existingBooking.bookingId})`);
-            const accessLink = `${process.env.FRONTEND_URL || 'https://growmoreapp2-0.onrender.com'}/customer/access/${existingBooking.accessToken}`;
+            const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${existingBooking.accessToken}`;
             return res.status(200).json({
               message: 'Booking already exists',
               booking: existingBooking,
@@ -557,7 +557,7 @@ router.post('/public',
       await booking.populate('driver', 'name phone');
 
       // Generate access link for customer to track
-      const accessLink = `${process.env.FRONTEND_URL || 'https://growmoreapp2-0.onrender.com'}/customer/access/${booking.accessToken}`;
+      const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${booking.accessToken}`;
 
       // Send SMS + WhatsApp confirmation
       try {

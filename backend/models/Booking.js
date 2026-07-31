@@ -88,6 +88,10 @@ const bookingSchema = new mongoose.Schema({
       return require('crypto').randomBytes(32).toString('hex');
     }
   },
+  accessTokenCreatedAt: {
+    type: Date,
+    default: Date.now
+  },
   payment: {
     method: {
       type: String,

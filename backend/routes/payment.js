@@ -121,7 +121,7 @@ router.get('/check-booking/:orderId', async (req, res) => {
       .populate('driver', 'name phone');
 
     if (booking) {
-      const accessLink = `${process.env.FRONTEND_URL || 'https://growmoreapp2-0.onrender.com'}/customer/access/${booking.accessToken}`;
+      const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${booking.accessToken}`;
       return res.json({ found: true, booking, accessLink });
     }
 
@@ -256,7 +256,7 @@ router.post('/webhook', async (req, res) => {
     console.log(`🎉 Webhook: Successfully auto-created booking ${booking.bookingId} for order ${orderId}`);
 
     // Generate access link
-    const accessLink = `${process.env.FRONTEND_URL || 'https://growmoreapp2-0.onrender.com'}/customer/access/${booking.accessToken}`;
+    const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${booking.accessToken}`;
 
     // Send notifications
     try {

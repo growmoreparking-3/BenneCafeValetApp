@@ -294,7 +294,7 @@ const CustomerBookingForm = () => {
             <CheckCircle size={64} color="#10B981" />
           </div>
           <h2>Booking Confirmed! 🎉</h2>
-          <p>Your vehicle has been registered for valet parking at Benne Cafe.</p>
+          <p>Your vehicle has been registered for valet parking at Benne.</p>
           <div className="cbf-booking-id-box">
             <span>Booking ID</span>
             <strong>{createdBookingId}</strong>
