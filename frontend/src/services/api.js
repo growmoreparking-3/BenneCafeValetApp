@@ -26,7 +26,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const isAuthRoute = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/customer/verify-otp');
+    const isAuthRoute = 
+      error.config?.url?.includes('/auth/login') || 
+      error.config?.url?.includes('/auth/customer/verify-otp') ||
+      error.config?.url?.includes('/auth/customer/access');
+    
     if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');

@@ -156,7 +156,7 @@ class WhatsAppService {
    * Template: benne_cafe_booking_confirmation
    * Category: UTILITY — APPROVED
    * Body variables: None
-   * Button (index 0): Call To Action (URL) — "Track my car"
+   * Button (index 0): Call To Action (URL) — "Track my Valet Booking"
    *   Base URL: https://<your-app-domain>/customer/access/
    *   URL Suffix variable: {{1}} → accessToken
    */
@@ -191,7 +191,7 @@ class WhatsAppService {
       console.log('\n📲 MOCK WhatsApp (Benne Cafe Valet):');
       console.log(`   To       : ${to}`);
       console.log(`   Template : benne_cafe_booking_confirmation`);
-      console.log(`   [Button] : Track my car → accessToken=${accessToken}`);
+      console.log(`   [Button] : Track my Valet Booking → accessToken=${accessToken}`);
       console.log('─────────────────────────────\n');
       return { success: true, mock: true };
     }

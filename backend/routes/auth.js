@@ -182,7 +182,11 @@ router.post('/customer/verify-otp',
 // Customer - Token-based Auto Login
 router.get('/customer/access/:token', async (req, res) => {
   try {
-    const { token: accessToken } = req.params;
+    let { token: accessToken } = req.params;
+    if (accessToken && accessToken.startsWith('{{1}}')) {
+      accessToken = accessToken.replace('{{1}}', '');
+    }
+    console.log(`🔑 Access link requested with token: "${accessToken}"`);
     const Booking = require('../models/Booking');
 
     // Find booking by access token
