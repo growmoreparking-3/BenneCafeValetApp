@@ -254,7 +254,7 @@ const CustomerBookingForm = () => {
       setBtnState('failed');
       toast.error(err.response?.data?.message || 'Failed to initiate payment. Please try again.');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, paymentAmount, paymentMethod, btnState, driverPhone]);
 
   const handleRetry = () => setBtnState('idle');
@@ -294,7 +294,7 @@ const CustomerBookingForm = () => {
             <CheckCircle size={64} color="#10B981" />
           </div>
           <h2>Booking Confirmed! 🎉</h2>
-          <p>Your vehicle has been registered for valet parking at Benne.</p>
+          <p>Your vehicle has been registered for valet parking at benne.</p>
           <div className="cbf-booking-id-box">
             <span>Booking ID</span>
             <strong>{createdBookingId}</strong>
@@ -311,7 +311,7 @@ const CustomerBookingForm = () => {
             </div>
           )}
           <p className="cbf-track-hint">
-            You will receive an SMS with a tracking link to monitor your car status in real time.
+            You will receive an whatsapp message with a tracking link to monitor your car status in real time.
           </p>
         </motion.div>
       </div>
@@ -355,12 +355,12 @@ const CustomerBookingForm = () => {
             >
               {/* Logo */}
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-  
+
                 <h2 style={{
                   fontFamily: "'Lora', serif",
                   fontSize: '20px', fontWeight: 700,
                   color: '#353535', margin: '0 0 4px',
-                }}>Welcome to Benne</h2>
+                }}>Welcome to benne</h2>
                 <p style={{ fontSize: '13px', color: '#7A6E63', margin: 0 }}>Please read before proceeding</p>
               </div>
 
@@ -376,7 +376,7 @@ const CustomerBookingForm = () => {
                 color: '#454039',
                 fontFamily: "'Lato', sans-serif",
               }}>
-                <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#CC7722' }}>Thank you for visiting Benne.</p>
+                <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#CC7722' }}>Thank you for visiting benne.</p>
                 <p style={{ margin: '0 0 8px' }}>Valet services are provided for your convenience. While every care is taken, <strong>Benne cannot be responsible for theft or damage to the vehicle.</strong></p>
                 <p style={{ margin: '0 0 8px' }}>Please ensure <strong>valuable items are safe with you</strong>, outside the car.</p>
                 <p style={{ margin: '0 0 8px' }}>Please allow us <strong>15 mins</strong> to bring the vehicle back to you.</p>
@@ -413,7 +413,7 @@ const CustomerBookingForm = () => {
       >
         {/* Header */}
         <div className="cbf-header">
-          <h1>Valet Service for Benne</h1>
+          <h1>Valet Service for benne</h1>
           <p>Book your valet parking in seconds</p>
         </div>
 
@@ -468,7 +468,7 @@ const CustomerBookingForm = () => {
             <div className="cbf-venue-fee-row">
               <div className="cbf-venue-fee-info">
                 <span className="cbf-venue-fee-label">
-                  {venueName ? `Parking charge at ${venueName}` : 'Valet Parking Charge'}
+                  Parking charge
                 </span>
                 {venueLoading ? (
                   <span className="cbf-fee-loading">Loading fee…</span>
@@ -582,7 +582,6 @@ const CustomerBookingForm = () => {
 
         </form>
 
-        <p className="cbf-footer">Powered by Benne Cafe Valet</p>
       </motion.div>
     </div>
   );
