@@ -581,6 +581,55 @@ router.get('/all-bookings', auth, authorize('admin', 'manager'), async (req, res
   }
 });
 
+// ===== ADMIN: UPDATE BOOKING PAYMENT (method + status) =====
+router.patch('/bookings/:id/payment', auth, authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const { paymentMethod, paymentStatus } = req.body;
+
+    const VALID_METHODS  = ['cash', 'upi', 'card', 'razorpay', 'staff', 'foc', 'qr'];
+    const VALID_STATUSES = ['unpaid', 'paid'];
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (paymentMethod && VALID_METHODS.includes(paymentMethod)) {
+      booking.payment = { ...booking.payment, method: paymentMethod };
+      // FOC bookings are always marked paid
+      if (paymentMethod === 'foc') booking.paymentStatus = 'paid';
+    }
+    if (paymentStatus && VALID_STATUSES.includes(paymentStatus)) {
+      booking.paymentStatus = paymentStatus;
+    }
+
+    await booking.save();
+    await booking.populate('driver', 'name phone');
+
+    console.log(`Admin updated payment for booking ${booking.bookingId}: method=${booking.payment?.method}, status=${booking.paymentStatus}`);
+    res.json({ message: 'Payment updated successfully', booking });
+  } catch (error) {
+    console.error('Admin update payment error:', error);
+    res.status(500).json({ message: 'Failed to update payment' });
+  }
+});
+
+// ===== ADMIN: DELETE BOOKING =====
+router.delete('/bookings/:id', auth, authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    await Booking.findByIdAndDelete(req.params.id);
+    console.log(`Admin deleted booking ${booking.bookingId}`);
+    res.json({ message: 'Booking deleted successfully' });
+  } catch (error) {
+    console.error('Admin delete booking error:', error);
+    res.status(500).json({ message: 'Failed to delete booking' });
+  }
+});
+
 // ===== NEW: CUSTOMER RIDES — lookup by phone (Admin, Manager) =====
 router.get('/customer-rides', auth, authorize('admin', 'manager'), async (req, res) => {
   try {
