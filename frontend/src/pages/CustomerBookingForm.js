@@ -261,7 +261,7 @@ const CustomerBookingForm = () => {
 
   /* ─── Button label & style helpers ─────────────────────── */
   const getBtnLabel = () => {
-    if (btnState === 'paying')  return <><div className="cbf-spinner-ring" style={{ width: 18, height: 18, borderWidth: 2 }} /> Opening Payment Gateway…</>;
+    if (btnState === 'paying') return <><div className="cbf-spinner-ring" style={{ width: 18, height: 18, borderWidth: 2 }} /> Opening Payment Gateway…</>;
     if (btnState === 'booking') return <><div className="cbf-spinner-ring" style={{ width: 18, height: 18, borderWidth: 2 }} /> Creating Your Booking…</>;
     if (paymentMethod === 'razorpay') return <><CreditCard size={20} /> Pay ₹{paymentAmount} &amp; Create Booking</>;
     return <>🚗 Create Booking</>;
@@ -377,7 +377,7 @@ const CustomerBookingForm = () => {
                 fontFamily: "'Lato', sans-serif",
               }}>
                 <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#CC7722' }}>Thank you for visiting benne.</p>
-                <p style={{ margin: '0 0 8px' }}>Valet services are provided for your convenience. While every care is taken, <strong>Benne cannot be responsible for theft or damage to the vehicle.</strong></p>
+                <p style={{ margin: '0 0 8px' }}>Valet services are provided for your convenience. While every care is taken, <strong>benne cannot be responsible for theft or damage to the vehicle.</strong></p>
                 <p style={{ margin: '0 0 8px' }}>Please ensure <strong>valuable items are safe with you</strong>, outside the car.</p>
                 <p style={{ margin: '0 0 8px' }}>Please allow us <strong>15 mins</strong> to bring the vehicle back to you.</p>
                 <p style={{ margin: 0, fontWeight: 700, color: '#CC7722' }}>Hope you enjoy your meal! 🍽️</p>
