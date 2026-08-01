@@ -153,7 +153,7 @@ class WhatsAppService {
   }
 
   /**
-   * Template: benne_cafe_booking_confirmation_20260731211920
+   * Template: benne_cafe_booking_confirmation_20260801094630
    * Category: UTILITY — APPROVED
    * Body variables: None
    * Button (index 0): Call To Action (URL) — "Track my Valet Booking"
@@ -170,7 +170,7 @@ class WhatsAppService {
         messages: [{
           kind: 'template',
           template: {
-            name: 'benne_cafe_booking_confirmation_20260731211920',
+            name: 'benne_cafe_booking_confirmation_20260801094630',
             language: 'en_US',
             components: [
               // Button index 0: dynamic URL suffix (accessToken)
@@ -186,11 +186,11 @@ class WhatsAppService {
           }
         }]
       };
-      return this._post(payload, 'benne_cafe_booking_confirmation_20260731211920');
+      return this._post(payload, 'benne_cafe_booking_confirmation_20260801094630');
     } else {
       console.log('\n📲 MOCK WhatsApp (Benne Cafe Valet):');
       console.log(`   To       : ${to}`);
-      console.log(`   Template : benne_cafe_booking_confirmation_20260731211920`);
+      console.log(`   Template : benne_cafe_booking_confirmation_20260801094630`);
       console.log(`   [Button] : Track my Valet Booking → accessToken=${accessToken}`);
       console.log('─────────────────────────────\n');
       return { success: true, mock: true };
