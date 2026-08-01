@@ -182,25 +182,32 @@ router.post('/',
         console.log('No email provided - skipping email notification');
       }
 
-      // Send SMS to customer (backup notification or primary if no email)
-      console.log(`\n📱 SENDING BOOKING CONFIRMATION SMS`);
-      console.log('To:', customerPhone);
-      console.log('Booking ID:', booking.bookingId);
-      console.log('Access Link:', accessLink);
-      console.log('Message: Your vehicle parking confirmed! Booking ID:', booking.bookingId);
-      console.log('Track & manage: ' + accessLink);
-      console.log('---');
-      try {
-        await smsService.sendBookingConfirmation(customerPhone, booking.bookingId, accessLink);
-        console.log('✓ Booking confirmation SMS sent to:', customerPhone);
-      } catch (smsError) {
-        console.error('✗ SMS failed:', customerPhone, smsError.message);
-      }
-      try {
-        await whatsappService.sendBookingConfirmation(customerPhone, customerName, booking.bookingId, booking.accessToken);
-        console.log('✓ Booking confirmation WhatsApp sent to:', customerPhone);
-      } catch (waError) {
-        console.error('✗ WhatsApp failed:', customerPhone, waError.message);
+      // Send SMS + WhatsApp confirmation (idempotent — only if not already sent)
+      const claimedForNotif = await Booking.findOneAndUpdate(
+        { _id: booking._id, 'notificationsSent.bookingConfirmation': false },
+        { $set: { 'notificationsSent.bookingConfirmation': true } },
+        { new: false }
+      );
+      if (claimedForNotif) {
+        console.log(`\n📱 SENDING BOOKING CONFIRMATION SMS`);
+        console.log('To:', customerPhone);
+        console.log('Booking ID:', booking.bookingId);
+        console.log('Access Link:', accessLink);
+        console.log('---');
+        try {
+          await smsService.sendBookingConfirmation(customerPhone, booking.bookingId, accessLink);
+          console.log('✓ Booking confirmation SMS sent to:', customerPhone);
+        } catch (smsError) {
+          console.error('✗ SMS failed:', customerPhone, smsError.message);
+        }
+        try {
+          await whatsappService.sendBookingConfirmation(customerPhone, customerName, booking.bookingId, booking.accessToken);
+          console.log('✓ Booking confirmation WhatsApp sent to:', customerPhone);
+        } catch (waError) {
+          console.error('✗ WhatsApp failed:', customerPhone, waError.message);
+        }
+      } else {
+        console.log('⚠ Booking confirmation notification already sent — skipping duplicate.');
       }
 
       // Emit to supervisor dashboard
@@ -475,6 +482,25 @@ router.post('/public',
         }
       }
 
+      // ===== VEHICLE NUMBER 15-MIN DEDUPLICATION (all payment methods) =====
+      const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+      const vehicleNumberUpper = (vehicleNumber || '').trim().toUpperCase();
+      const recentVehicleBooking = await Booking.findOne({
+        'vehicle.number': vehicleNumberUpper,
+        status: { $ne: 'cancelled' },
+        createdAt: { $gte: fifteenMinsAgo }
+      }).populate('driver', 'name phone');
+
+      if (recentVehicleBooking) {
+        console.log(`⚠ Vehicle dedup: Booking already exists for vehicle ${vehicleNumberUpper} within last 15 min (${recentVehicleBooking.bookingId})`);
+        const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${recentVehicleBooking.accessToken}`;
+        return res.status(200).json({
+          message: 'Booking already exists for this vehicle',
+          booking: recentVehicleBooking,
+          accessLink
+        });
+      }
+
       // Find driver by phone
       const driver = await User.findOne({ phone: driverPhone, role: 'driver' });
       if (!driver) {
@@ -559,20 +585,29 @@ router.post('/public',
       // Generate access link for customer to track
       const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${booking.accessToken}`;
 
-      // Send SMS + WhatsApp confirmation
-      try {
-        await smsService.sendBookingConfirmation(customerPhone, booking.bookingId, accessLink);
-      } catch (e) { console.error('SMS failed:', e.message); }
-      try {
-        await whatsappService.sendBookingConfirmation(customerPhone, customerName, booking.bookingId, booking.accessToken);
-        console.log('✓ WhatsApp booking confirmation sent to:', customerPhone);
-      } catch (e) { console.error('WhatsApp failed:', e.message); }
-
-      // Send Email if provided
-      if (customerEmail) {
+      // Send SMS + WhatsApp confirmation (idempotent — only if not already sent)
+      const claimedForNotif = await Booking.findOneAndUpdate(
+        { _id: booking._id, 'notificationsSent.bookingConfirmation': false },
+        { $set: { 'notificationsSent.bookingConfirmation': true } },
+        { new: false }
+      );
+      if (claimedForNotif) {
         try {
-          await emailService.sendBookingConfirmation(customerEmail, customerName, booking.bookingId, accessLink, vehicleNumber, '');
-        } catch (e) { console.error('Email failed:', e.message); }
+          await smsService.sendBookingConfirmation(customerPhone, booking.bookingId, accessLink);
+        } catch (e) { console.error('SMS failed:', e.message); }
+        try {
+          await whatsappService.sendBookingConfirmation(customerPhone, customerName, booking.bookingId, booking.accessToken);
+          console.log('✓ WhatsApp booking confirmation sent to:', customerPhone);
+        } catch (e) { console.error('WhatsApp failed:', e.message); }
+
+        // Send Email if provided
+        if (customerEmail) {
+          try {
+            await emailService.sendBookingConfirmation(customerEmail, customerName, booking.bookingId, accessLink, vehicleNumber, '');
+          } catch (e) { console.error('Email failed:', e.message); }
+        }
+      } else {
+        console.log('⚠ Booking confirmation notification already sent — skipping duplicate.');
       }
 
       // Notify driver via socket
@@ -703,52 +738,48 @@ router.post('/:id/estimate-arrival', auth, authorize('driver'), async (req, res)
     });
     console.log('In-transit notification sent to customer via socket');
 
-    // Send Email notification (if email available)
-    if (booking.customer.email) {
-      console.log(`\n📧 SENDING RECALL NOTIFICATION EMAIL`);
-      console.log('To:', booking.customer.email);
-      console.log('Customer Name:', booking.customer.name);
-      console.log('Booking ID:', booking.bookingId);
-      console.log('Estimated Arrival:', estimatedMinutes, 'minutes');
-      console.log('Message: Your car is on the way! ETA:', estimatedMinutes, 'minutes');
-      console.log('---');
+    // Send SMS + WhatsApp recall notifications (idempotent — only if not already sent)
+    const claimedRecall = await Booking.findOneAndUpdate(
+      { _id: booking._id, 'notificationsSent.recallNotification': false },
+      { $set: { 'notificationsSent.recallNotification': true } },
+      { new: false }
+    );
+    if (claimedRecall) {
+      // Send Email notification (if email available)
+      if (booking.customer.email) {
+        console.log(`\n📧 SENDING RECALL NOTIFICATION EMAIL`);
+        try {
+          await emailService.sendRecallNotification(
+            booking.customer.email,
+            booking.customer.name,
+            booking.bookingId,
+            estimatedMinutes
+          );
+          console.log('✓ Recall notification email sent successfully to:', booking.customer.email);
+        } catch (emailError) {
+          console.error('✗ Failed to send recall email to:', booking.customer.email, emailError.message);
+        }
+      }
+
+      console.log(`\n📱 SENDING RECALL NOTIFICATION SMS`);
       try {
-        await emailService.sendRecallNotification(
-          booking.customer.email,
-          booking.customer.name,
-          booking.bookingId,
-          estimatedMinutes
+        await smsService.sendRecallNotification(
+          booking.customer.phone, booking.bookingId, estimatedMinutes
         );
-        console.log('✓ Recall notification email sent successfully to:', booking.customer.email);
-      } catch (emailError) {
-        console.error('✗ Failed to send recall email to:', booking.customer.email, emailError.message);
+        console.log('✓ Recall SMS sent to:', booking.customer.phone);
+      } catch (smsError) {
+        console.error('✗ Recall SMS failed:', smsError.message);
+      }
+      try {
+        await whatsappService.sendRecallNotification(
+          booking.customer.phone, booking.bookingId, estimatedMinutes
+        );
+        console.log('✓ Recall WhatsApp sent to:', booking.customer.phone);
+      } catch (waError) {
+        console.error('✗ Recall WhatsApp failed:', waError.message);
       }
     } else {
-      console.log('No email available - skipping email notification');
-    }
-
-    // Send SMS notification (backup or primary if no email)
-    console.log(`\n📱 SENDING RECALL NOTIFICATION SMS`);
-    console.log('To:', booking.customer.phone);
-    console.log('Booking ID:', booking.bookingId);
-    console.log('Estimated Arrival:', estimatedMinutes, 'minutes');
-    console.log('Message: Your car is on the way! Booking:', booking.bookingId, '| ETA:', estimatedMinutes, 'min');
-    console.log('---');
-    try {
-      await smsService.sendRecallNotification(
-        booking.customer.phone, booking.bookingId, estimatedMinutes
-      );
-      console.log('✓ Recall SMS sent to:', booking.customer.phone);
-    } catch (smsError) {
-      console.error('✗ Recall SMS failed:', smsError.message);
-    }
-    try {
-      await whatsappService.sendRecallNotification(
-        booking.customer.phone, booking.bookingId, estimatedMinutes
-      );
-      console.log('✓ Recall WhatsApp sent to:', booking.customer.phone);
-    } catch (waError) {
-      console.error('✗ Recall WhatsApp failed:', waError.message);
+      console.log('⚠ Recall notification already sent — skipping duplicate.');
     }
 
     console.log('=== Arrival Time Set Complete ===\n');
@@ -811,53 +842,48 @@ router.post('/:id/arrived', auth, authorize('driver'), async (req, res) => {
     });
     console.log('Arrival notification sent to customer via socket');
 
-    // Send Email with OTP (if email available)
-    if (booking.customer.email) {
-      console.log(`\n📧 SENDING ARRIVAL NOTIFICATION EMAIL WITH OTP`);
-      console.log('To:', booking.customer.email);
-      console.log('Customer Name:', booking.customer.name);
-      console.log('Booking ID:', booking.bookingId);
-      console.log('OTP:', otp);
-      console.log('Message: Your car has arrived! Use OTP', otp, 'to collect your vehicle');
-      console.log('Valid for: 10 minutes');
-      console.log('---');
+    // Send arrival notifications (idempotent — only if not already sent)
+    const claimedArrival = await Booking.findOneAndUpdate(
+      { _id: booking._id, 'notificationsSent.arrivalNotification': false },
+      { $set: { 'notificationsSent.arrivalNotification': true } },
+      { new: false }
+    );
+    if (claimedArrival) {
+      // Send Email with OTP (if email available)
+      if (booking.customer.email) {
+        console.log(`\n📧 SENDING ARRIVAL NOTIFICATION EMAIL WITH OTP`);
+        try {
+          await emailService.sendArrivalNotification(
+            booking.customer.email,
+            booking.customer.name,
+            booking.bookingId,
+            otp
+          );
+          console.log('✓ Arrival notification email with OTP sent successfully to:', booking.customer.email);
+        } catch (emailError) {
+          console.error('✗ Failed to send arrival email to:', booking.customer.email, emailError.message);
+        }
+      }
+
+      console.log(`\n📱 SENDING ARRIVAL NOTIFICATION SMS WITH OTP`);
       try {
-        await emailService.sendArrivalNotification(
-          booking.customer.email,
-          booking.customer.name,
-          booking.bookingId,
-          otp
+        await smsService.sendArrivalNotification(
+          booking.customer.phone, booking.bookingId, otp
         );
-        console.log('✓ Arrival notification email with OTP sent successfully to:', booking.customer.email);
-      } catch (emailError) {
-        console.error('✗ Failed to send arrival email to:', booking.customer.email, emailError.message);
+        console.log('✓ Arrival SMS sent to:', booking.customer.phone);
+      } catch (smsError) {
+        console.error('✗ Arrival SMS failed:', smsError.message);
+      }
+      try {
+        await whatsappService.sendArrivalNotification(
+          booking.customer.phone, booking.bookingId, otp
+        );
+        console.log('✓ Arrival WhatsApp sent to:', booking.customer.phone);
+      } catch (waError) {
+        console.error('✗ Arrival WhatsApp failed:', waError.message);
       }
     } else {
-      console.log('No email available - skipping email notification');
-    }
-
-    // Send SMS with OTP (backup or primary if no email)
-    console.log(`\n📱 SENDING ARRIVAL NOTIFICATION SMS WITH OTP`);
-    console.log('To:', booking.customer.phone);
-    console.log('Booking ID:', booking.bookingId);
-    console.log('OTP:', otp);
-    console.log('Message: Your car has arrived! Booking:', booking.bookingId, '| OTP:', otp, '| Valid for 10 min');
-    console.log('---');
-    try {
-      await smsService.sendArrivalNotification(
-        booking.customer.phone, booking.bookingId, otp
-      );
-      console.log('✓ Arrival SMS sent to:', booking.customer.phone);
-    } catch (smsError) {
-      console.error('✗ Arrival SMS failed:', smsError.message);
-    }
-    try {
-      await whatsappService.sendArrivalNotification(
-        booking.customer.phone, booking.bookingId, otp
-      );
-      console.log('✓ Arrival WhatsApp sent to:', booking.customer.phone);
-    } catch (waError) {
-      console.error('✗ Arrival WhatsApp failed:', waError.message);
+      console.log('⚠ Arrival notification already sent — skipping duplicate.');
     }
 
     console.log('=== Driver Arrival Complete ===\n');
@@ -947,16 +973,25 @@ router.post('/:id/verify-complete', auth, authorize('driver'),
       });
       console.log('Completion notification sent to customer via socket');
 
-      // Send thank you WhatsApp message
-      try {
-        await whatsappService.sendThankYou(
-          booking.customer.phone,
-          booking.customer.name,
-          booking.bookingId
-        );
-        console.log('✓ Thank you WhatsApp sent to:', booking.customer.phone);
-      } catch (waErr) {
-        console.error('✗ Thank you WhatsApp failed:', waErr.message);
+      // Send thank you WhatsApp message (idempotent — only if not already sent)
+      const claimedThankYou = await Booking.findOneAndUpdate(
+        { _id: booking._id, 'notificationsSent.thankYou': false },
+        { $set: { 'notificationsSent.thankYou': true } },
+        { new: false }
+      );
+      if (claimedThankYou) {
+        try {
+          await whatsappService.sendThankYou(
+            booking.customer.phone,
+            booking.customer.name,
+            booking.bookingId
+          );
+          console.log('✓ Thank you WhatsApp sent to:', booking.customer.phone);
+        } catch (waErr) {
+          console.error('✗ Thank you WhatsApp failed:', waErr.message);
+        }
+      } else {
+        console.log('⚠ Thank you notification already sent — skipping duplicate.');
       }
 
       console.log('=== Booking Completion Process Finished ===\n');

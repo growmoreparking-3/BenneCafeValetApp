@@ -377,6 +377,35 @@ const MyBookings = () => {
     );
   };
 
+  // Toggle cash payment status directly on the card
+  const handleTogglePaymentStatus = async (booking) => {
+    const newStatus = booking.paymentStatus === 'paid' ? 'unpaid' : 'paid';
+    // Optimistic update
+    setBookings(prev =>
+      prev.map(b => b._id === booking._id ? { ...b, paymentStatus: newStatus } : b)
+    );
+    try {
+      const data = new FormData();
+      data.append('paymentStatus', newStatus);
+      const res = await api.put(`/bookings/${booking._id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success(newStatus === 'paid' ? '✅ Payment marked as received!' : '⏳ Payment marked as remaining');
+      // Sync with server response
+      if (res.data?.booking) {
+        setBookings(prev =>
+          prev.map(b => b._id === res.data.booking._id ? res.data.booking : b)
+        );
+      }
+    } catch (err) {
+      // Revert on failure
+      setBookings(prev =>
+        prev.map(b => b._id === booking._id ? { ...b, paymentStatus: booking.paymentStatus } : b)
+      );
+      toast.error('Failed to update payment status');
+    }
+  };
+
   // Set arrival time
   const handleEstimateArrival = async (bookingId, mins) => {
     if (processingId) return;
@@ -557,16 +586,24 @@ const MyBookings = () => {
                             </div>
                           </div>
 
-                          {/* Payment status pill on card for cash bookings */}
+                          {/* Payment status pill — tap to toggle */}
                           {isCash && (
                             booking.paymentStatus === 'paid' ? (
-                              <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#D1FAE5', border: '1.5px solid #6EE7B7', fontSize: '12px', fontWeight: 700, color: '#065F46' }}>
+                              <button
+                                onClick={() => handleTogglePaymentStatus(booking)}
+                                title="Tap to mark as Payment Remaining"
+                                style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#D1FAE5', border: '1.5px solid #6EE7B7', fontSize: '12px', fontWeight: 700, color: '#065F46', cursor: 'pointer' }}
+                              >
                                 <Check size={13} color="#059669" /> Payment Received
-                              </div>
+                              </button>
                             ) : (
-                              <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#FEF3C7', border: '1.5px solid #FCD34D', fontSize: '12px', fontWeight: 700, color: '#92400E' }}>
+                              <button
+                                onClick={() => handleTogglePaymentStatus(booking)}
+                                title="Tap to mark as Payment Received"
+                                style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#FEF3C7', border: '1.5px solid #FCD34D', fontSize: '12px', fontWeight: 700, color: '#92400E', cursor: 'pointer' }}
+                              >
                                 <AlertCircle size={13} color="#D97706" /> Payment Remaining
-                              </div>
+                              </button>
                             )
                           )}
 

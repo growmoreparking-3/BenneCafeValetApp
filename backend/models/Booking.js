@@ -121,6 +121,13 @@ const bookingSchema = new mongoose.Schema({
     venue: String
   },
   notes: String,
+  // Tracks which notifications have already been sent — prevents duplicates on double-tap
+  notificationsSent: {
+    bookingConfirmation: { type: Boolean, default: false },
+    recallNotification:  { type: Boolean, default: false },
+    arrivalNotification: { type: Boolean, default: false },
+    thankYou:            { type: Boolean, default: false }
+  },
   createdAt: {
     type: Date,
     default: Date.now
