@@ -225,45 +225,6 @@ const EditBookingModal = ({ booking, onClose, onSaved }) => {
               </datalist>
             </div>
 
-            {/* Cash Payment Status — only for cash bookings, not complementary */}
-            {isCashBooking && !form.complementary && (
-              <div style={{ marginTop: '12px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '8px' }}>
-                  Cash Payment Status
-                </label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, cashPaymentStatus: 'paid' })}
-                    style={{
-                      flex: 1, padding: '10px 12px', borderRadius: '10px', border: 'none',
-                      cursor: 'pointer', fontWeight: 700, fontSize: '13px',
-                      background: form.cashPaymentStatus === 'paid' ? '#D1FAE5' : '#F3F4F6',
-                      color:      form.cashPaymentStatus === 'paid' ? '#065F46' : '#6B7280',
-                      outline:    form.cashPaymentStatus === 'paid' ? '2px solid #10B981' : '2px solid transparent',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    ✓ Payment Received
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, cashPaymentStatus: 'unpaid' })}
-                    style={{
-                      flex: 1, padding: '10px 12px', borderRadius: '10px', border: 'none',
-                      cursor: 'pointer', fontWeight: 700, fontSize: '13px',
-                      background: form.cashPaymentStatus === 'unpaid' ? '#FEF3C7' : '#F3F4F6',
-                      color:      form.cashPaymentStatus === 'unpaid' ? '#92400E' : '#6B7280',
-                      outline:    form.cashPaymentStatus === 'unpaid' ? '2px solid #F59E0B' : '2px solid transparent',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    ⏳ Payment Remaining
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Complementary toggle — only for cash bookings */}
             {isCashBooking && (
               <div className="edit-toggle-row" style={{ marginTop: '12px', background: form.complementary ? '#F0FDF4' : '#FFFBEB', border: `1.5px solid ${form.complementary ? '#86EFAC' : '#FDE68A'}`, borderRadius: '10px', padding: '10px 14px' }}>
@@ -380,7 +341,7 @@ const MyBookings = () => {
   const [verifyMode,        setVerifyMode]        = useState('otp');   // 'otp' | 'phone'
   const [customerPhoneInput,setCustomerPhoneInput]= useState('');
   const [paymentMethod,     setPaymentMethod]     = useState('cash');
-  const [activeTab,         setActiveTab]         = useState('active');
+  const [activeTab,         setActiveTab]         = useState('recalled');
   const [editingBooking,    setEditingBooking]    = useState(null);  // booking being edited
   const [arrivalTimes,      setArrivalTimes]      = useState({});
 
@@ -502,13 +463,205 @@ const MyBookings = () => {
 
         {/* Tabs */}
         <div className="bookings-tabs">
+          <button className={`tab-btn ${activeTab === 'recalled'  ? 'active' : ''}`} onClick={() => setActiveTab('recalled')}>
+            🚗 Recalled ({bookings.filter(b => ['recall-requested','in-transit','arrived'].includes(b.status)).length})
+          </button>
           <button className={`tab-btn ${activeTab === 'active'    ? 'active' : ''}`} onClick={() => setActiveTab('active')}>
-            Active Bookings ({bookings.length})
+            Active ({bookings.length})
           </button>
           <button className={`tab-btn ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')}>
             Completed ({completedBookings.length})
           </button>
         </div>
+
+        {/* Recalled Bookings Tab */}
+        {activeTab === 'recalled' && (
+          <>
+            {bookings.filter(b => ['recall-requested','in-transit','arrived'].includes(b.status)).length === 0 ? (
+              <div className="empty-state">
+                <Car size={80} color="#CCC" />
+                <h3>No recalled bookings</h3>
+                <p>Bookings with active recall requests will appear here</p>
+              </div>
+            ) : (
+              <div className="bookings-grid">
+                {bookings
+                  .filter(b => ['recall-requested','in-transit','arrived'].includes(b.status))
+                  .sort((a, b) => {
+                    const p = { 'recall-requested': 0, 'in-transit': 1, 'arrived': 2 };
+                    return (p[a.status] || 99) - (p[b.status] || 99);
+                  })
+                  .map((booking, index) => {
+                    const isRazorpay = booking.payment?.method === 'razorpay';
+                    const isCash = booking.payment?.method === 'cash';
+                    return (
+                      <motion.div
+                        key={booking._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="booking-card recalled"
+                      >
+                        <div className="booking-header">
+                          <div>
+                            <h3>{booking.bookingId}</h3>
+                            <p className="booking-time">{new Date(booking.createdAt).toLocaleString()}</p>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            {isRazorpay && (
+                              <span style={{
+                                fontSize: '10.5px', fontWeight: 800, padding: '3px 8px',
+                                borderRadius: '6px', background: '#EEF2FF', color: '#4F46E5',
+                                border: '1.5px solid #C7D2FE', letterSpacing: '0.3px'
+                              }}>Razorpay</span>
+                            )}
+                            <span className="status-badge" style={{ background: getStatusColor(booking.status) }}>
+                              {booking.status.replace('-', ' ').toUpperCase()}
+                            </span>
+                            <button
+                              className="edit-booking-btn"
+                              title="Edit booking"
+                              onClick={() => setEditingBooking(booking)}
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="booking-details">
+                          <div className="detail-row">
+                            <Car size={18} color="#FF6B35" />
+                            <div>
+                              <strong>{booking.vehicle?.number}</strong>
+                              <span className="detail-meta">
+                                {booking.vehicle?.type?.toUpperCase() || ''}
+                                {booking.vehicle?.model && ` - ${booking.vehicle.model}`}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="detail-row">
+                            <Phone size={18} color="#FF6B35" />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div>
+                                <strong>{booking.customer?.name}</strong>
+                                <span className="detail-meta">{booking.customer?.phone}</span>
+                              </div>
+                              <button
+                                title="Copy phone number"
+                                onClick={() => { navigator.clipboard.writeText(booking.customer?.phone || ''); toast.success('Phone copied!'); }}
+                                style={{ background: 'none', border: '1px solid #E5E7EB', borderRadius: '6px', padding: '3px 6px', cursor: 'pointer', color: '#6B7280', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                              >
+                                <Copy size={13} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Payment status pill on card for cash bookings */}
+                          {isCash && (
+                            booking.paymentStatus === 'paid' ? (
+                              <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#D1FAE5', border: '1.5px solid #6EE7B7', fontSize: '12px', fontWeight: 700, color: '#065F46' }}>
+                                <Check size={13} color="#059669" /> Payment Received
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#FEF3C7', border: '1.5px solid #FCD34D', fontSize: '12px', fontWeight: 700, color: '#92400E' }}>
+                                <AlertCircle size={13} color="#D97706" /> Payment Remaining
+                              </div>
+                            )
+                          )}
+
+                          {booking.location?.venue && (
+                            <div className="detail-row">
+                              <MapPin size={18} color="#FF6B35" />
+                              <span>{booking.location.venue}</span>
+                            </div>
+                          )}
+
+                          {booking.vehicle?.hasValuables && booking.vehicle?.valuables?.length > 0 && (
+                            <div className="detail-row security-row">
+                              <AlertCircle size={16} color="#F59E0B" />
+                              <span className="valuables-tag">Valuables: {booking.vehicle.valuables.join(', ')}</span>
+                            </div>
+                          )}
+
+                          {booking.vehicle?.driverName && (
+                            <div className="detail-row" style={{ marginTop: '4px' }}>
+                              <User size={18} color="#FF6B35" />
+                              <div style={{ fontSize: '13px', color: '#10B981', fontWeight: 600 }}>Handled by: {booking.vehicle.driverName}</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Recall requested */}
+                        {booking.status === 'recall-requested' && (
+                          <div className="action-section" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <AlertCircle size={20} color="#F59E0B" />
+                              <p className="action-title" style={{ margin: 0 }}>Customer requested recall!</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                              <input
+                                type="number" min="1" max="120"
+                                value={arrivalTimes[booking._id] !== undefined ? arrivalTimes[booking._id] : 10}
+                                onChange={(e) => setArrivalTimes({ ...arrivalTimes, [booking._id]: e.target.value })}
+                                style={{ width: '80px', padding: '10px', borderRadius: '8px', border: '2px solid #DDD8CC', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}
+                              />
+                              <button
+                                className="action-btn primary" style={{ flex: 1, margin: 0 }}
+                                onClick={() => handleEstimateArrival(booking._id, arrivalTimes[booking._id] !== undefined ? arrivalTimes[booking._id] : 10)}
+                                disabled={processingId === booking._id}
+                              >
+                                {processingId === booking._id ? 'Processing...' : 'Set Arrival Time'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* In transit */}
+                        {booking.status === 'in-transit' && (
+                          <div className="action-section">
+                            <p className="action-title">🕐 ETA: {booking.recall?.estimatedArrival ?? 10} minutes</p>
+                            <button className="action-btn primary" onClick={() => handleMarkArrived(booking._id)} disabled={processingId === booking._id}>
+                              {processingId === booking._id ? 'Processing...' : 'Mark as Arrived'}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Arrived */}
+                        {booking.status === 'arrived' && (
+                          <div className="action-section">
+                            <p className="action-title">Car arrived. Verify customer identity.</p>
+                            {selectedBooking === booking._id ? (
+                              <div className="action-form">
+                                <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1.5px solid #E5E7EB', marginBottom: '10px' }}>
+                                  <button type="button" onClick={() => { setVerifyMode('otp'); setCustomerPhoneInput(''); }} style={{ flex: 1, padding: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '12.5px', background: verifyMode === 'otp' ? '#FF6B35' : '#F9FAFB', color: verifyMode === 'otp' ? '#fff' : '#6B7280', transition: 'all 0.15s' }}>🔢 Enter OTP</button>
+                                  <button type="button" onClick={() => { setVerifyMode('phone'); setOtp(''); }} style={{ flex: 1, padding: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '12.5px', background: verifyMode === 'phone' ? '#FF6B35' : '#F9FAFB', color: verifyMode === 'phone' ? '#fff' : '#6B7280', transition: 'all 0.15s' }}>📱 Use Phone No.</button>
+                                </div>
+                                {verifyMode === 'otp' ? (
+                                  <input type="text" inputMode="numeric" placeholder="Enter 6-digit OTP from customer" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength="6" />
+                                ) : (
+                                  <>
+                                    <input type="tel" inputMode="numeric" placeholder="Enter customer's registered mobile number" value={customerPhoneInput} onChange={(e) => setCustomerPhoneInput(e.target.value)} maxLength="10" />
+                                    <p style={{ fontSize: '11.5px', color: '#6B7280', margin: '5px 0 0', lineHeight: 1.4 }}>⚠️ Use only if customer is unable to provide OTP (e.g., phone switched off).</p>
+                                  </>
+                                )}
+                                <div className="action-buttons" style={{ marginTop: '8px' }}>
+                                  <button className="action-btn primary" onClick={() => handleCompleteBooking(booking._id)}>Complete Booking</button>
+                                  <button className="action-btn secondary" onClick={() => { setSelectedBooking(null); setOtp(''); setCustomerPhoneInput(''); setVerifyMode('otp'); }}>Cancel</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button className="action-btn primary" onClick={() => setSelectedBooking(booking._id)}>Complete Booking</button>
+                            )}
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+              </div>
+            )}
+          </>
+        )}
 
         {/* Active Bookings */}
         {activeTab === 'active' && (
@@ -528,6 +681,8 @@ const MyBookings = () => {
                   })
                   .map((booking, index) => {
                     const isRecalled = ['recall-requested', 'in-transit', 'arrived'].includes(booking.status);
+                    const isRazorpay = booking.payment?.method === 'razorpay';
+                    const isCash = booking.payment?.method === 'cash';
                     return (
                       <motion.div
                         key={booking._id}
@@ -541,7 +696,14 @@ const MyBookings = () => {
                             <h3>{booking.bookingId}</h3>
                             <p className="booking-time">{new Date(booking.createdAt).toLocaleString()}</p>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            {isRazorpay && (
+                              <span style={{
+                                fontSize: '10.5px', fontWeight: 800, padding: '3px 8px',
+                                borderRadius: '6px', background: '#EEF2FF', color: '#4F46E5',
+                                border: '1.5px solid #C7D2FE', letterSpacing: '0.3px'
+                              }}>Razorpay</span>
+                            )}
                             <span className="status-badge" style={{ background: getStatusColor(booking.status) }}>
                               {booking.status.replace('-', ' ').toUpperCase()}
                             </span>
@@ -594,6 +756,19 @@ const MyBookings = () => {
                               </div>
                             </div>
 
+                          {/* Payment status pill on card for cash bookings only */}
+                          {isCash && (
+                            booking.paymentStatus === 'paid' ? (
+                              <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#D1FAE5', border: '1.5px solid #6EE7B7', fontSize: '12px', fontWeight: 700, color: '#065F46' }}>
+                                <Check size={13} color="#059669" /> Payment Received
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '20px', background: '#FEF3C7', border: '1.5px solid #FCD34D', fontSize: '12px', fontWeight: 700, color: '#92400E' }}>
+                                <AlertCircle size={13} color="#D97706" /> Payment Remaining
+                              </div>
+                            )
+                          )}
+
                           {booking.location?.venue && (
                             <div className="detail-row">
                               <MapPin size={18} color="#FF6B35" />
@@ -618,31 +793,6 @@ const MyBookings = () => {
                                 Handled by: {booking.vehicle.driverName}
                               </div>
                             </div>
-                          )}
-
-                          {/* Cash payment status banner */}
-                          {booking.payment?.method === 'cash' && booking.payment?.method !== 'foc' && (
-                            booking.paymentStatus === 'paid' ? (
-                              <div style={{
-                                marginTop: '8px', padding: '7px 12px', borderRadius: '8px',
-                                background: '#D1FAE5', border: '1.5px solid #6EE7B7',
-                                display: 'flex', alignItems: 'center', gap: '7px',
-                                fontSize: '12.5px', fontWeight: 700, color: '#065F46'
-                              }}>
-                                <Check size={14} color="#059669" />
-                                Cash Received
-                              </div>
-                            ) : (
-                              <div style={{
-                                marginTop: '8px', padding: '7px 12px', borderRadius: '8px',
-                                background: '#FEF3C7', border: '1.5px solid #FCD34D',
-                                display: 'flex', alignItems: 'center', gap: '7px',
-                                fontSize: '12.5px', fontWeight: 700, color: '#92400E'
-                              }}>
-                                <AlertCircle size={14} color="#D97706" />
-                                Cash Pending — Collect ₹{booking.payment?.amount || ''} from customer
-                              </div>
-                            )
                           )}
                         </div>
 
