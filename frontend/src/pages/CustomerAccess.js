@@ -53,7 +53,7 @@ const CustomerAccess = () => {
           className="login-header"
           style={{ textAlign: 'center', padding: '32px 24px' }}
         >
-          <h2 style={{ fontFamily: "'Lora', serif", color: '#353535', marginBottom: '8px' }}>Benne Valet</h2>
+          <h2 style={{ fontFamily: "'Lora', serif", color: '#353535', marginBottom: '8px' }}>benne Valet</h2>
 
           {loading && (
             <>
