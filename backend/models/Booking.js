@@ -138,9 +138,27 @@ const bookingSchema = new mongoose.Schema({
   }
 });
 
-// Update timestamp before saving
+// Update timestamp and sync payment fields before saving
 bookingSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
+
+  // Sync paymentStatus ('paid'/'unpaid') and payment.status ('completed'/'pending'/'failed')
+  if (this.paymentStatus === 'paid') {
+    this.payment.status = 'completed';
+    if (!this.payment.paidAt) {
+      this.payment.paidAt = new Date();
+    }
+  } else if (this.paymentStatus === 'unpaid') {
+    this.payment.status = 'pending';
+  } else if (this.payment && this.payment.status === 'completed') {
+    this.paymentStatus = 'paid';
+    if (!this.payment.paidAt) {
+      this.payment.paidAt = new Date();
+    }
+  } else if (this.payment && (this.payment.status === 'pending' || this.payment.status === 'failed')) {
+    this.paymentStatus = 'unpaid';
+  }
+
   next();
 });
 

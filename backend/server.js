@@ -64,7 +64,31 @@ app.use("/api/", limiter);
 // ✅ MongoDB Connection
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log("✓ MongoDB Connected"))
+  .then(async () => {
+    console.log("✓ MongoDB Connected");
+    try {
+      const Booking = require("./models/Booking");
+      // Update all bookings where paymentStatus is 'paid' but payment.status is not 'completed'
+      const resPaid = await Booking.updateMany(
+        { paymentStatus: "paid", "payment.status": { $ne: "completed" } },
+        { $set: { "payment.status": "completed" } }
+      );
+      if (resPaid.modifiedCount > 0) {
+        console.log(`✓ Synced ${resPaid.modifiedCount} paid bookings to payment.status='completed'`);
+      }
+      
+      // Also update all bookings where paymentStatus is 'unpaid' but payment.status is not 'pending'
+      const resUnpaid = await Booking.updateMany(
+        { paymentStatus: "unpaid", "payment.status": { $ne: "pending" } },
+        { $set: { "payment.status": "pending" } }
+      );
+      if (resUnpaid.modifiedCount > 0) {
+        console.log(`✓ Synced ${resUnpaid.modifiedCount} unpaid bookings to payment.status='pending'`);
+      }
+    } catch (err) {
+      console.error("Migration error:", err);
+    }
+  })
   .catch((err) => console.error("MongoDB Connection Error:", err));
 
 // ✅ Make io accessible to routes
