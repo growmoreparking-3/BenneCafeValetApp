@@ -840,6 +840,185 @@ router.get('/revenue-stats', auth, authorize('admin', 'manager', 'supervisor'), 
   }
 });
 
+// GET /api/admin/revenue-stats/custom?from=ISO&to=ISO
+// Custom date-range analytics: summary + hourly (<=3 days) or daily breakdown
+router.get('/revenue-stats/custom', auth, authorize('admin', 'manager', 'supervisor'), async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    if (!from || !to) {
+      return res.status(400).json({ message: 'Both from and to date params are required' });
+    }
+
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
+    if (isNaN(fromDate) || isNaN(toDate) || fromDate > toDate) {
+      return res.status(400).json({ message: 'Invalid date range' });
+    }
+
+    // Build role-based driver filter
+    let driverFilter = {};
+    if (req.user.role === 'supervisor') {
+      const assignedDrivers = await User.find({ role: 'driver', supervisor: req.user._id }).select('_id');
+      driverFilter = { driver: { $in: assignedDrivers.map(d => d._id) } };
+    } else if (req.user.role === 'manager') {
+      const supervisors = await User.find({ role: 'supervisor', manager: req.user._id }).select('_id');
+      const supervisorIds = supervisors.map(s => s._id);
+      const assignedDrivers = await User.find({ role: 'driver', supervisor: { $in: supervisorIds } }).select('_id');
+      driverFilter = { driver: { $in: assignedDrivers.map(d => d._id) } };
+    }
+
+    const baseMatch = {
+      ...driverFilter,
+      'payment.status': 'completed',
+      'payment.amount': { $gt: 0 },
+      createdAt: { $gte: fromDate, $lte: toDate }
+    };
+
+    // Summary totals for the custom range
+    const [summaryResult, allBookingsInRange] = await Promise.all([
+      Booking.aggregate([
+        { $match: baseMatch },
+        { $group: { _id: null, total: { $sum: '$payment.amount' }, count: { $sum: 1 } } }
+      ]),
+      Booking.aggregate([
+        { $match: { ...driverFilter, createdAt: { $gte: fromDate, $lte: toDate } } },
+        { $group: { _id: null, total: { $sum: 1 }, active: { $sum: { $cond: [{ $in: ['$status', ['parked', 'recall-requested', 'in-transit', 'arrived']] }, 1, 0] } }, completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } } } }
+      ])
+    ]);
+
+    // Payment method breakdown for the range
+    const paymentBreakdownData = await Booking.aggregate([
+      { $match: { ...driverFilter, 'payment.status': 'completed', createdAt: { $gte: fromDate, $lte: toDate } } },
+      { $group: { _id: '$payment.method', total: { $sum: '$payment.amount' }, count: { $sum: 1 } } }
+    ]);
+
+    // Payment status counts for the range
+    const paymentStatusData = await Booking.aggregate([
+      { $match: { ...driverFilter, createdAt: { $gte: fromDate, $lte: toDate } } },
+      { $group: { _id: '$payment.status', count: { $sum: 1 }, total: { $sum: '$payment.amount' } } }
+    ]);
+    const statusMap = {};
+    paymentStatusData.forEach(s => { statusMap[s._id || 'pending'] = { count: s.count, total: s.total }; });
+
+    // Determine range size in days to decide granularity
+    const diffDays = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24));
+
+    let hourlyBreakdown = null;
+    let dailyBreakdown = null;
+
+    if (diffDays <= 3) {
+      // ── HOURLY BREAKDOWN (for single day or up to 3-day range) ──
+      const hourlyData = await Booking.aggregate([
+        { $match: baseMatch },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' },
+              day: { $dayOfMonth: '$createdAt' },
+              hour: { $hour: '$createdAt' }
+            },
+            amount: { $sum: '$payment.amount' },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.hour': 1 } }
+      ]);
+
+      // Build a map for quick lookup
+      const hourlyMap = {};
+      hourlyData.forEach(h => {
+        const key = `${h._id.year}-${String(h._id.month).padStart(2,'0')}-${String(h._id.day).padStart(2,'0')}-${String(h._id.hour).padStart(2,'0')}`;
+        hourlyMap[key] = { amount: h.amount, count: h.count };
+      });
+
+      // Fill every hour in the range with 0 if no data
+      hourlyBreakdown = [];
+      const cursor = new Date(fromDate);
+      cursor.setHours(0, 0, 0, 0);
+      while (cursor <= toDate) {
+        const hour = cursor.getHours();
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}-${String(hour).padStart(2,'0')}`;
+        const ampm = hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour-12}pm`;
+        const dayLabel = diffDays > 1 ? ` ${cursor.toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}` : '';
+        hourlyBreakdown.push({
+          label: `${ampm}${dayLabel}`,
+          hour,
+          date: cursor.toISOString().split('T')[0],
+          amount: hourlyMap[key]?.amount || 0,
+          count: hourlyMap[key]?.count || 0
+        });
+        cursor.setHours(cursor.getHours() + 1);
+      }
+    } else {
+      // ── DAILY BREAKDOWN (for ranges > 3 days) ──
+      const dailyData = await Booking.aggregate([
+        { $match: baseMatch },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' },
+              day: { $dayOfMonth: '$createdAt' }
+            },
+            amount: { $sum: '$payment.amount' },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+      ]);
+
+      const dailyMap = {};
+      dailyData.forEach(d => {
+        const key = `${d._id.year}-${String(d._id.month).padStart(2,'0')}-${String(d._id.day).padStart(2,'0')}`;
+        dailyMap[key] = { amount: d.amount, count: d.count };
+      });
+
+      dailyBreakdown = [];
+      const cursor = new Date(fromDate);
+      cursor.setHours(0, 0, 0, 0);
+      while (cursor <= toDate) {
+        const key = cursor.toISOString().split('T')[0];
+        dailyBreakdown.push({
+          date: key,
+          label: cursor.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+          amount: dailyMap[key]?.amount || 0,
+          count: dailyMap[key]?.count || 0
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    }
+
+    res.json({
+      range: { from: fromDate, to: toDate, days: diffDays },
+      summary: {
+        amount: summaryResult[0]?.total || 0,
+        count: summaryResult[0]?.count || 0,
+        totalBookings: allBookingsInRange[0]?.total || 0,
+        activeBookings: allBookingsInRange[0]?.active || 0,
+        completedBookings: allBookingsInRange[0]?.completed || 0
+      },
+      paymentBreakdown: paymentBreakdownData.reduce((acc, item) => {
+        acc[item._id || 'unknown'] = { amount: item.total, count: item.count };
+        return acc;
+      }, {}),
+      paymentStatus: {
+        successful: statusMap['completed'] || { count: 0, total: 0 },
+        failed:     statusMap['failed']    || { count: 0, total: 0 },
+        pending:    statusMap['pending']   || { count: 0, total: 0 }
+      },
+      hourlyBreakdown,  // non-null only when diffDays <= 3
+      dailyBreakdown    // non-null only when diffDays > 3
+    });
+  } catch (error) {
+    console.error('Custom revenue stats error:', error);
+    res.status(500).json({ message: 'Failed to fetch custom analytics' });
+  }
+});
+
 // ===== MANAGER MANAGEMENT ROUTES =====
 
 // Get all managers (Admin only)

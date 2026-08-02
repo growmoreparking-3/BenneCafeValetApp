@@ -6,33 +6,50 @@ import { useSocket } from '../context/SocketContext';
 import toast from 'react-hot-toast';
 import {
   LogOut, Activity, Car, Clock, TrendingUp, Download,
-  CreditCard, CheckCircle, XCircle, BarChart2, Calendar
+  CreditCard, CheckCircle, XCircle, BarChart2, Calendar, Search
 } from 'lucide-react';
 import api from '../services/api';
 import logo from '../logo.png';
 import './SupervisorDashboard.css';
 
 /* ─── Mini Bar Chart (pure SVG) ──────────────────────────── */
-const MiniBarChart = ({ data, height = 100 }) => {
+const MiniBarChart = ({ data, height = 100, color = '#8B5CF6' }) => {
+  const [tooltip, setTooltip] = useState(null);
   if (!data || data.length === 0) return <div className="svtx-no-data">No data for this period</div>;
   const max = Math.max(...data.map(d => d.amount), 1);
   const barW = Math.max(6, Math.floor(460 / data.length) - 4);
+  const totalWidth = data.length * (barW + 4);
+
   return (
-    <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-      <svg width={data.length * (barW + 4)} height={height + 22} style={{ display: 'block' }}>
+    <div style={{ overflowX: 'auto', paddingBottom: 4, position: 'relative' }}>
+      {tooltip && (
+        <div style={{
+          position: 'absolute', top: 0, left: Math.min(tooltip.x, totalWidth - 140),
+          background: 'rgba(26,26,46,0.95)', color: '#fff', borderRadius: 8,
+          padding: '6px 12px', fontSize: 12, fontWeight: 600, zIndex: 10,
+          pointerEvents: 'none', whiteSpace: 'nowrap', backdropFilter: 'blur(4px)',
+          border: '1px solid rgba(255,255,255,0.1)'
+        }}>
+          ₹{tooltip.amount.toLocaleString('en-IN')} • {tooltip.count} txn{tooltip.count !== 1 ? 's' : ''}<br />
+          <span style={{ fontWeight: 400, opacity: 0.8, fontSize: 11 }}>{tooltip.label}</span>
+        </div>
+      )}
+      <svg width={totalWidth} height={height + 24} style={{ display: 'block' }}>
         {data.map((d, i) => {
-          const bH = Math.max(3, Math.round((d.amount / max) * height));
+          const bH = Math.max(d.amount > 0 ? 4 : 1, Math.round((d.amount / max) * height));
           const x = i * (barW + 4);
           const y = height - bH;
           const isLast = i === data.length - 1;
+          const barColor = d.amount > 0 ? (isLast ? '#FF6B35' : color) : '#E5E7EB';
           return (
-            <g key={i}>
-              <rect x={x} y={y} width={barW} height={bH} rx={3}
-                fill={isLast ? '#FF6B35' : d.amount > 0 ? '#8B5CF6' : '#E5E7EB'} opacity={isLast ? 1 : 0.8}>
-                <title>₹{d.amount.toLocaleString()} • {d.count} txn(s) • {d.label}</title>
-              </rect>
-              {(i % Math.ceil(data.length / 8) === 0 || isLast) && (
-                <text x={x + barW / 2} y={height + 16} textAnchor="middle" fontSize="8" fill="#9CA3AF">
+            <g key={i}
+              onMouseEnter={() => setTooltip({ x: x + barW / 2, amount: d.amount, count: d.count, label: d.label })}
+              onMouseLeave={() => setTooltip(null)}
+              style={{ cursor: d.amount > 0 ? 'pointer' : 'default' }}
+            >
+              <rect x={x} y={y} width={barW} height={bH} rx={3} fill={barColor} opacity={isLast ? 1 : 0.82} />
+              {(i % Math.ceil(data.length / 10) === 0 || isLast) && (
+                <text x={x + barW / 2} y={height + 18} textAnchor="middle" fontSize="8" fill="#9CA3AF">
                   {d.label}
                 </text>
               )}
@@ -44,6 +61,15 @@ const MiniBarChart = ({ data, height = 100 }) => {
   );
 };
 
+/* ─── Quick-select presets for custom date picker ─── */
+const DATE_PRESETS = [
+  { label: 'Today', getDates: () => { const d = new Date(); return { from: d.toISOString().split('T')[0], to: d.toISOString().split('T')[0] }; } },
+  { label: 'Yesterday', getDates: () => { const d = new Date(); d.setDate(d.getDate() - 1); return { from: d.toISOString().split('T')[0], to: d.toISOString().split('T')[0] }; } },
+  { label: 'Last 7 Days', getDates: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 6); return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] }; } },
+  { label: 'Last 30 Days', getDates: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 29); return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] }; } },
+  { label: 'This Month', getDates: () => { const now = new Date(); const from = new Date(now.getFullYear(), now.getMonth(), 1); return { from: from.toISOString().split('T')[0], to: now.toISOString().split('T')[0] }; } },
+];
+
 const SupervisorDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -53,12 +79,28 @@ const SupervisorDashboard = () => {
   const [loading,  setLoading]  = useState(true);
   const [filter,   setFilter]   = useState('active');
   const [dateFilter, setDateFilter] = useState('today');
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'transactions'
+  const [activeTab, setActiveTab] = useState('bookings');
 
-  // Transaction-specific state
+  // Transaction state
   const [txnData, setTxnData]   = useState(null);
   const [txnLoading, setTxnLoading] = useState(false);
   const [txnChartView, setTxnChartView] = useState('daily');
+
+  // Custom date range state
+  const today = new Date().toISOString().split('T')[0];
+  const [customFrom, setCustomFrom] = useState(today);
+  const [customTo,   setCustomTo]   = useState(today);
+  const [customData, setCustomData] = useState(null);
+  const [customLoading, setCustomLoading] = useState(false);
+  const [customChartView, setCustomChartView] = useState('hourly');
+  const [activePreset, setActivePreset] = useState('Today');
+
+  // Export panel state
+  const [showExportPanel, setShowExportPanel] = useState(false);
+  const [exportFrom, setExportFrom] = useState(today);
+  const [exportTo,   setExportTo]   = useState(today);
+  const [exportPreset, setExportPreset] = useState('Today');
+  const [exportLoading, setExportLoading] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -104,6 +146,19 @@ const SupervisorDashboard = () => {
     finally { setTxnLoading(false); }
   }, []);
 
+  const fetchCustomAnalytics = useCallback(async (from, to) => {
+    if (!from || !to) return;
+    setCustomLoading(true);
+    try {
+      const res = await api.get('/admin/revenue-stats/custom', { params: { from, to } });
+      setCustomData(res.data);
+      // Auto-select chart type based on range
+      if (res.data.hourlyBreakdown) setCustomChartView('hourly');
+      else setCustomChartView('daily');
+    } catch { toast.error('Failed to load custom analytics'); }
+    finally { setCustomLoading(false); }
+  }, []);
+
   useEffect(() => {
     fetchStats();
     fetchBookings();
@@ -114,6 +169,14 @@ const SupervisorDashboard = () => {
       fetchTransactions();
     }
   }, [activeTab, txnData, fetchTransactions]);
+
+  // Load custom analytics for "Today" on transactions tab first open
+  useEffect(() => {
+    if (activeTab === 'transactions') {
+      fetchCustomAnalytics(customFrom, customTo);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   useEffect(() => {
     if (socket) {
@@ -155,32 +218,78 @@ const SupervisorDashboard = () => {
     return `${mins}m`;
   };
 
-  const exportToCSV = () => {
+  // Payment method as clean text (no emoji) for CSV
+  const getPaymentMethodText = (m) => ({
+    razorpay: 'Razorpay', cash: 'Cash', upi: 'UPI',
+    card: 'Card', qr: 'QR', staff: 'Staff', foc: 'FOC', pending: 'Pending'
+  }[m] || m || 'Pending');
+
+  const generateCSV = (data) => {
+    const headers = [
+      'Sr. No.', 'Booking ID', 'Customer Name', 'Customer Phone',
+      'Vehicle Number', 'Driver Name', 'Status',
+      'Booking Time', 'Recall Time', 'Complete Time',
+      'Duration', 'Venue', 'Parking Spot', 'Payment Method'
+    ];
+    const rows = data.map((b, idx) => [
+      idx + 1,
+      b.bookingId || '', b.customer?.name || '', b.customer?.phone || '',
+      b.vehicle?.number || '', b.driver?.name || 'N/A', b.status || '',
+      formatTime(b.createdAt), formatTime(b.recall?.requestedAt),
+      formatTime(b.parking?.actualEndTime), formatDuration(b),
+      b.location?.venue || '', b.location?.parkingSpot || '',
+      getPaymentMethodText(b.payment?.method)
+    ]);
+    return [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+  };
+
+  const triggerDownload = (csvContent, from, to) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.setAttribute('href', URL.createObjectURL(blob));
+    const fromLabel = from || new Date().toISOString().split('T')[0];
+    const toLabel   = to   || fromLabel;
+    const filename  = from === to
+      ? `bookings-${fromLabel}.csv`
+      : `bookings-${fromLabel}-to-${toLabel}.csv`;
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportDownload = async () => {
+    if (!exportFrom || !exportTo) return toast.error('Please select both dates');
+    if (new Date(exportFrom) > new Date(exportTo)) return toast.error('From date must be before To date');
+    setExportLoading(true);
     try {
-      const headers = [
-        'Booking ID', 'Customer Name', 'Customer Phone',
-        'Vehicle Number', 'Driver Name', 'Status',
-        'Booking Time', 'Recall Time', 'Complete Time',
-        'Duration', 'Venue', 'Parking Spot'
-      ];
-      const rows = bookings.map(b => [
-        b.bookingId || '', b.customer?.name || '', b.customer?.phone || '',
-        b.vehicle?.number || '', b.driver?.name || 'N/A', b.status || '',
-        formatTime(b.createdAt), formatTime(b.recall?.requestedAt),
-        formatTime(b.parking?.actualEndTime), formatDuration(b),
-        b.location?.venue || '', b.location?.parkingSpot || ''
-      ]);
-      const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.setAttribute('href', URL.createObjectURL(blob));
-      link.setAttribute('download', `bookings-${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success('CSV downloaded!');
+      // Build date range
+      const fromDate = new Date(exportFrom); fromDate.setHours(0, 0, 0, 0);
+      const toDate   = new Date(exportTo);   toDate.setHours(23, 59, 59, 999);
+      // Fetch all bookings for the date range (no status filter for export)
+      const res = await api.get('/bookings/all', {
+        params: { from: fromDate.toISOString(), to: toDate.toISOString() }
+      });
+      const data = res.data.bookings || [];
+      if (data.length === 0) {
+        toast.error('No bookings found for this date range');
+        setExportLoading(false);
+        return;
+      }
+      const csv = generateCSV(data);
+      triggerDownload(csv, exportFrom, exportTo);
+      toast.success(`Downloaded ${data.length} bookings!`);
+      setShowExportPanel(false);
     } catch { toast.error('Failed to export CSV'); }
+    finally { setExportLoading(false); }
+  };
+
+  const handleExportPreset = (preset) => {
+    setExportPreset(preset.label);
+    const { from, to } = preset.getDates();
+    setExportFrom(from);
+    setExportTo(to);
   };
 
   const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
@@ -208,6 +317,32 @@ const SupervisorDashboard = () => {
     { label: 'Total Bookings',   value: stats.totalBookings  || 0, icon: Clock,      color: '#8B5CF6' }
   ];
 
+  const handlePreset = (preset) => {
+    setActivePreset(preset.label);
+    const { from, to } = preset.getDates();
+    setCustomFrom(from);
+    setCustomTo(to);
+    fetchCustomAnalytics(from, to);
+  };
+
+  const handleCustomSearch = () => {
+    if (!customFrom || !customTo) return toast.error('Please select both dates');
+    if (new Date(customFrom) > new Date(customTo)) return toast.error('From date must be before To date');
+    setActivePreset(null);
+    fetchCustomAnalytics(customFrom, customTo);
+  };
+
+  // Determine which chart data to use for custom analytics
+  const customChartData = customData
+    ? (customChartView === 'hourly' && customData.hourlyBreakdown
+        ? customData.hourlyBreakdown
+        : customData.dailyBreakdown || [])
+    : [];
+
+  const diffDays = customData?.range?.days || 1;
+  const hasHourly = customData?.hourlyBreakdown != null;
+  const hasDaily  = customData?.dailyBreakdown  != null;
+
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
@@ -220,9 +355,86 @@ const SupervisorDashboard = () => {
         </div>
         <div className="header-right">
           {activeTab === 'bookings' && (
-            <button onClick={exportToCSV} className="export-btn" style={{ marginRight: '10px' }}>
-              <Download size={18} /> Export CSV
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowExportPanel(p => !p)}
+                className="export-btn"
+                style={{ marginRight: '10px' }}
+              >
+                <Download size={18} /> Export CSV
+              </button>
+
+              {/* Export Options Panel */}
+              <AnimatePresence>
+                {showExportPanel && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                    transition={{ duration: 0.18 }}
+                    className="export-panel"
+                  >
+                    <div className="export-panel-header">
+                      <span>📊 Download Bookings</span>
+                      <button onClick={() => setShowExportPanel(false)} className="export-panel-close">✕</button>
+                    </div>
+
+                    {/* Quick presets */}
+                    <div className="export-panel-presets">
+                      {DATE_PRESETS.map(p => (
+                        <button
+                          key={p.label}
+                          className={`svtx-preset-btn ${exportPreset === p.label ? 'active' : ''}`}
+                          style={{ fontSize: 11, padding: '4px 10px' }}
+                          onClick={() => handleExportPreset(p)}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Date inputs */}
+                    <div className="export-panel-dates">
+                      <div className="svtx-date-field">
+                        <label>From</label>
+                        <input
+                          type="date"
+                          value={exportFrom}
+                          max={exportTo || today}
+                          className="svtx-date-input"
+                          onChange={e => { setExportFrom(e.target.value); setExportPreset(null); }}
+                        />
+                      </div>
+                      <div className="svtx-date-field">
+                        <label>To</label>
+                        <input
+                          type="date"
+                          value={exportTo}
+                          min={exportFrom}
+                          max={today}
+                          className="svtx-date-input"
+                          onChange={e => { setExportTo(e.target.value); setExportPreset(null); }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="export-panel-info">
+                      📋 Sr. No. · Booking ID · Customer · Vehicle · Driver · Status · Times · Duration · Venue · <strong>Payment Method</strong>
+                    </div>
+
+                    <button
+                      className="svtx-search-btn"
+                      style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
+                      onClick={handleExportDownload}
+                      disabled={exportLoading}
+                    >
+                      <Download size={15} />
+                      {exportLoading ? 'Fetching…' : 'Download CSV'}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
           {activeTab === 'transactions' && (
             <button onClick={fetchTransactions} className="export-btn" style={{ marginRight: '10px' }} disabled={txnLoading}>
@@ -499,6 +711,152 @@ const SupervisorDashboard = () => {
                         <div className="svtx-no-data">No payment data yet</div>
                       )}
                     </div>
+                  </div>
+
+                  {/* ══ CUSTOM DATE RANGE ANALYTICS ══ */}
+                  <div className="svtx-custom-section">
+                    <div className="svtx-custom-header">
+                      <Calendar size={18} color="#FF6B35" />
+                      <h3>Custom Date Analytics</h3>
+                    </div>
+
+                    {/* Quick-select presets */}
+                    <div className="svtx-preset-row">
+                      {DATE_PRESETS.map(p => (
+                        <button
+                          key={p.label}
+                          className={`svtx-preset-btn ${activePreset === p.label ? 'active' : ''}`}
+                          onClick={() => handlePreset(p)}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Date pickers */}
+                    <div className="svtx-date-picker-row">
+                      <div className="svtx-date-field">
+                        <label>From</label>
+                        <input
+                          type="date"
+                          value={customFrom}
+                          max={customTo || today}
+                          onChange={e => { setCustomFrom(e.target.value); setActivePreset(null); }}
+                          className="svtx-date-input"
+                        />
+                      </div>
+                      <div className="svtx-date-field">
+                        <label>To</label>
+                        <input
+                          type="date"
+                          value={customTo}
+                          min={customFrom}
+                          max={today}
+                          onChange={e => { setCustomTo(e.target.value); setActivePreset(null); }}
+                          className="svtx-date-input"
+                        />
+                      </div>
+                      <button
+                        className="svtx-search-btn"
+                        onClick={handleCustomSearch}
+                        disabled={customLoading}
+                      >
+                        <Search size={16} />
+                        {customLoading ? 'Loading…' : 'Analyse'}
+                      </button>
+                    </div>
+
+                    {/* Custom analytics results */}
+                    {customLoading && <div className="loading" style={{ padding: '30px 0' }}>Analysing…</div>}
+
+                    {customData && !customLoading && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="svtx-custom-results"
+                      >
+                        {/* Range label */}
+                        <div className="svtx-range-label">
+                          <span>
+                            {new Date(customData.range.from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            {' — '}
+                            {new Date(customData.range.to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                          <span className="svtx-range-days">{customData.range.days} day{customData.range.days !== 1 ? 's' : ''}</span>
+                        </div>
+
+                        {/* Summary metric tiles */}
+                        <div className="svtx-custom-metrics">
+                          {[
+                            { label: 'Revenue Collected', value: fmt(customData.summary.amount), sub: `${customData.summary.count} paid txns`, color: '#10B981' },
+                            { label: 'Total Bookings', value: customData.summary.totalBookings, sub: 'in this period', color: '#6366F1' },
+                            { label: 'Completed', value: customData.summary.completedBookings, sub: 'deliveries', color: '#FF6B35' },
+                            { label: 'Active / Parked', value: customData.summary.activeBookings, sub: 'still parked', color: '#F59E0B' },
+                          ].map(m => (
+                            <div key={m.label} className="svtx-custom-metric" style={{ borderLeft: `3px solid ${m.color}` }}>
+                              <span className="svtx-cm-value" style={{ color: m.color }}>{m.value}</span>
+                              <span className="svtx-cm-label">{m.label}</span>
+                              <span className="svtx-cm-sub">{m.sub}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Chart section */}
+                        <div className="svtx-chart-card" style={{ marginTop: 0 }}>
+                          <div className="svtx-chart-header">
+                            <h3>
+                              {hasHourly && customChartView === 'hourly'
+                                ? `Hourly Revenue ${diffDays === 1 ? '' : `(${diffDays} days)`}`
+                                : 'Daily Revenue'}
+                            </h3>
+                            <div className="svtx-chart-tabs">
+                              {hasHourly && (
+                                <button
+                                  className={`svtx-tab ${customChartView === 'hourly' ? 'active' : ''}`}
+                                  onClick={() => setCustomChartView('hourly')}
+                                >
+                                  Hourly
+                                </button>
+                              )}
+                              {hasDaily && (
+                                <button
+                                  className={`svtx-tab ${customChartView === 'daily' ? 'active' : ''}`}
+                                  onClick={() => setCustomChartView('daily')}
+                                >
+                                  Daily
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <MiniBarChart
+                            data={customChartData}
+                            height={110}
+                            color="#6366F1"
+                          />
+                        </div>
+
+                        {/* Payment method breakdown for custom range */}
+                        {Object.keys(customData.paymentBreakdown || {}).length > 0 && (
+                          <div className="svtx-method-card" style={{ marginTop: 16 }}>
+                            <h3><CreditCard size={15} /> Payment Methods · Custom Range</h3>
+                            <div className="svtx-method-list">
+                              {Object.entries(customData.paymentBreakdown).map(([method, val]) => (
+                                <div key={method} className="svtx-method-item">
+                                  <div className="svtx-method-left">
+                                    <span className="svtx-method-dot" style={{ background: paymentMethodColors[method] || '#9CA3AF' }} />
+                                    <span>{getPaymentMethodLabel(method)}</span>
+                                  </div>
+                                  <div className="svtx-method-right">
+                                    <span className="svtx-method-amount">{fmt(val.amount)}</span>
+                                    <span className="svtx-method-count">{val.count} txns</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
                   </div>
                 </>
               )}

@@ -90,6 +90,69 @@
   transform: translateY(-1px);
 }
 
+/* ---- EXPORT PANEL DROPDOWN ---- */
+.export-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 10px;
+  width: 320px;
+  background: white;
+  border-radius: 16px;
+  border: 1.5px solid #E5E7EB;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06);
+  padding: 18px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.export-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1A1A2E;
+}
+
+.export-panel-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #9CA3AF;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.export-panel-close:hover {
+  background: #F3F4F6;
+  color: #374151;
+}
+
+.export-panel-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.export-panel-dates {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.export-panel-info {
+  font-size: 11px;
+  color: #9CA3AF;
+  line-height: 1.5;
+  background: #F9FAFB;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
 /* ---- MAIN CONTENT ---- */
 .supervisor-content {
   padding: 28px;
@@ -495,3 +558,206 @@
   .svtx-cards      { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ══ CUSTOM DATE ANALYTICS SECTION ══ */
+.svtx-custom-section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+  border: 1px solid #F3F4F6;
+  margin-top: 4px;
+}
+
+.svtx-custom-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.svtx-custom-header h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1A1A2E;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+/* Quick-select presets */
+.svtx-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.svtx-preset-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #E5E7EB;
+  background: #F9FAFB;
+  color: #6B7280;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.svtx-preset-btn:hover {
+  border-color: #FF6B35;
+  color: #FF6B35;
+  background: #FFF5F2;
+}
+
+.svtx-preset-btn.active {
+  background: #FF6B35;
+  border-color: #FF6B35;
+  color: white;
+  box-shadow: 0 2px 8px rgba(255,107,53,0.3);
+}
+
+/* Date picker row */
+.svtx-date-picker-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.svtx-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.svtx-date-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.svtx-date-input {
+  padding: 9px 13px;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1A1A2E;
+  background: #F9FAFB;
+  cursor: pointer;
+  transition: border-color 0.18s;
+  outline: none;
+}
+
+.svtx-date-input:focus {
+  border-color: #FF6B35;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(255,107,53,0.1);
+}
+
+.svtx-search-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #FF6B35, #e85d2a);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 3px 12px rgba(255,107,53,0.3);
+  white-space: nowrap;
+}
+
+.svtx-search-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(255,107,53,0.4);
+}
+
+.svtx-search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Results */
+.svtx-custom-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.svtx-range-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.svtx-range-days {
+  background: #F3F4F6;
+  color: #6B7280;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* Metric tiles */
+.svtx-custom-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.svtx-custom-metric {
+  background: #F9FAFB;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.svtx-cm-value {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.svtx-cm-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.svtx-cm-sub {
+  font-size: 10px;
+  color: #9CA3AF;
+}
+
+@media (max-width: 900px) {
+  .svtx-custom-metrics { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .svtx-custom-metrics { grid-template-columns: 1fr 1fr; }
+  .svtx-date-picker-row { flex-direction: column; align-items: stretch; }
+  .svtx-search-btn { width: 100%; justify-content: center; }
+  .svtx-preset-row { gap: 6px; }
+  .svtx-preset-btn { font-size: 11px; padding: 5px 10px; }
+}
