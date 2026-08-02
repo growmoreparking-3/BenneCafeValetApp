@@ -531,6 +531,7 @@ const SupervisorDashboard = () => {
                   <table>
                     <thead>
                       <tr>
+                        <th style={{ width: 48 }}>Sr.</th>
                         <th>Booking ID</th>
                         <th>Customer</th>
                         <th>Vehicle</th>
@@ -544,11 +545,12 @@ const SupervisorDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {bookings.map((booking) => {
+                      {bookings.map((booking, idx) => {
                         const duration = formatDuration(booking);
                         const isActive = booking.status !== 'completed';
                         return (
                           <tr key={booking._id}>
+                            <td style={{ color: '#9CA3AF', fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{idx + 1}</td>
                             <td><strong>{booking.bookingId}</strong></td>
                             <td>
                               {booking.customer?.name || booking.customer?.phone}<br/>
