@@ -13,6 +13,9 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'YOUR_KEY_SECRET_HERE'
 });
 
+// Shared lock prevents duplicate booking creation when webhook + redirect fire simultaneously
+const { acquireOrderLock, releaseOrderLock } = require('../utils/orderLock');
+
 // POST /api/payment/create-order
 // Creates a Razorpay order for the given amount (in rupees)
 // Stores all booking details in order notes for webhook auto-creation if customer leaves page
@@ -173,6 +176,23 @@ router.post('/webhook', async (req, res) => {
       return res.json({ status: 'ignored', message: 'No order_id' });
     }
 
+    // ===== IN-MEMORY LOCK: Prevent race condition between webhook and redirect =====
+    // If another request is currently creating a booking for this orderId, wait for it
+    if (!acquireOrderLock(orderId)) {
+      console.log(`⏳ Webhook: Order ${orderId} is being processed by another request - waiting 2.5s...`);
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      const racedBooking = await Booking.findOne({
+        $or: [
+          { 'payment.razorpay.orderId': orderId },
+          { 'payment.razorpay.paymentId': paymentId }
+        ]
+      }).populate('driver', 'name phone');
+      if (racedBooking) {
+        console.log(`✓ Webhook: Found booking created by winning request for order ${orderId} (${racedBooking.bookingId})`);
+        return res.status(200).json({ status: 'ok', message: 'Booking created by concurrent request', bookingId: racedBooking.bookingId });
+      }
+    }
+
     // ===== DEDUPLICATION CHECK =====
     // Check if booking already exists for this orderId or paymentId
     let existingBooking = await Booking.findOne({
@@ -183,6 +203,7 @@ router.post('/webhook', async (req, res) => {
     }).populate('driver', 'name phone');
 
     if (existingBooking) {
+      releaseOrderLock(orderId);
       console.log(`✓ Webhook Deduplication: Booking already exists for order ${orderId} (${existingBooking.bookingId})`);
       if (paymentId && (!existingBooking.payment?.razorpay?.paymentId || existingBooking.payment.razorpay.paymentId !== paymentId)) {
         existingBooking.payment.razorpay.paymentId = paymentId;
@@ -192,6 +213,7 @@ router.post('/webhook', async (req, res) => {
       }
       return res.status(200).json({ status: 'ok', message: 'Booking already exists', bookingId: existingBooking.bookingId });
     }
+
 
     // Extract booking details stored in Razorpay order notes
     const {
@@ -252,8 +274,10 @@ router.post('/webhook', async (req, res) => {
 
     try {
       await booking.save();
+      releaseOrderLock(orderId);
       await booking.populate('driver', 'name phone');
     } catch (saveError) {
+      releaseOrderLock(orderId);
       if (saveError.code === 11000 && (
         saveError.message.includes('orderId') || 
         saveError.message.includes('paymentId') || 
@@ -273,6 +297,7 @@ router.post('/webhook', async (req, res) => {
       }
       throw saveError;
     }
+
 
     console.log(`🎉 Webhook: Successfully auto-created booking ${booking.bookingId} for order ${orderId}`);
 

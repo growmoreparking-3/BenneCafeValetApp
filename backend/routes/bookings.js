@@ -9,8 +9,10 @@ const whatsappService = require('../services/whatsappService');
 const emailService   = require('../services/emailService');
 const { upload } = require('../config/imageUpload');
 const { uploadMultipleFiles } = require('../config/googleDrive');
+const { acquireOrderLock, releaseOrderLock } = require('../utils/orderLock');
 
 console.log('📋 Booking routes module loaded with enhanced logging - v2.0');
+
 
 // Generate OTP for verification
 const generateOTP = () => {
@@ -473,6 +475,25 @@ router.post('/public',
         console.log('✓ Razorpay payment verified for public booking. PaymentId:', razorpayPaymentId);
 
         // ===== DEDUPLICATION CHECK =====
+        // ===== IN-MEMORY LOCK: Prevent race condition between webhook and redirect =====
+        if (!acquireOrderLock(razorpayOrderId)) {
+          console.log(`⏳ Public API: Order ${razorpayOrderId} is being processed by another request - waiting 2.5s...`);
+          await new Promise(resolve => setTimeout(resolve, 2500));
+          const racedBooking = await Booking.findOne({
+            $or: [
+              { 'payment.razorpay.orderId': razorpayOrderId },
+              { 'payment.razorpay.paymentId': razorpayPaymentId }
+            ]
+          }).populate('driver', 'name phone');
+          if (racedBooking) {
+            console.log(`✓ Public API: Found booking created by concurrent request for order ${razorpayOrderId} (${racedBooking.bookingId})`);
+            const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${racedBooking.accessToken}`;
+            return res.status(200).json({ message: 'Booking already exists', booking: racedBooking, accessLink });
+          }
+          // Lock holder may have failed - proceed to create
+          acquireOrderLock(razorpayOrderId);
+        }
+
         const queryConds = [];
         if (razorpayOrderId) queryConds.push({ 'payment.razorpay.orderId': razorpayOrderId });
         if (razorpayPaymentId) queryConds.push({ 'payment.razorpay.paymentId': razorpayPaymentId });
@@ -482,6 +503,7 @@ router.post('/public',
             .populate('driver', 'name phone');
 
           if (existingBooking) {
+            releaseOrderLock(razorpayOrderId);
             console.log(`✓ Public API Deduplication: Booking already exists for order ${razorpayOrderId} (${existingBooking.bookingId})`);
             const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${existingBooking.accessToken}`;
             return res.status(200).json({
@@ -592,8 +614,10 @@ router.post('/public',
 
       try {
         await booking.save();
+        if (isRazorpay) releaseOrderLock(razorpayOrderId);
         await booking.populate('driver', 'name phone');
       } catch (saveError) {
+        if (isRazorpay) releaseOrderLock(razorpayOrderId);
         if (saveError.code === 11000 && (
           saveError.message.includes('orderId') || 
           saveError.message.includes('paymentId') || 
