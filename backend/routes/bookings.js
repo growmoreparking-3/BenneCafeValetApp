@@ -579,8 +579,34 @@ router.post('/public',
         booking.vehicle.images = await uploadMultipleFiles(req.files, booking.bookingId);
       }
 
-      await booking.save();
-      await booking.populate('driver', 'name phone');
+      try {
+        await booking.save();
+        await booking.populate('driver', 'name phone');
+      } catch (saveError) {
+        if (saveError.code === 11000 && (
+          saveError.message.includes('orderId') || 
+          saveError.message.includes('paymentId') || 
+          (saveError.keyValue && (saveError.keyValue['payment.razorpay.orderId'] || saveError.keyValue['payment.razorpay.paymentId']))
+        )) {
+          console.log(`✓ Public API Race Condition Handled: Booking was inserted by webhook/another process for order ${razorpayOrderId}`);
+          const existingBooking = await Booking.findOne({
+            $or: [
+              { 'payment.razorpay.orderId': razorpayOrderId },
+              { 'payment.razorpay.paymentId': razorpayPaymentId }
+            ]
+          }).populate('driver', 'name phone');
+
+          if (existingBooking) {
+            const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${existingBooking.accessToken}`;
+            return res.status(200).json({
+              message: 'Booking already exists',
+              booking: existingBooking,
+              accessLink
+            });
+          }
+        }
+        throw saveError;
+      }
 
       // Generate access link for customer to track
       const accessLink = `${process.env.FRONTEND_URL || 'https://bennecafevaletapp.onrender.com'}/customer/access/${booking.accessToken}`;

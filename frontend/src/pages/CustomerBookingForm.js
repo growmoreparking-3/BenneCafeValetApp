@@ -133,10 +133,11 @@ const CustomerBookingForm = () => {
   /* ─── Single unified action button handler ──────────────── */
   const handlePayAndBook = useCallback(async () => {
     if (!validate()) return;
-    if (btnState === 'paying' || btnState === 'booking') return;
+    if (btnState === 'paying' || btnState === 'booking' || loading) return;
 
     // ── CASH: create booking directly ──
     if (paymentMethod === 'cash') {
+      setBtnState('booking');
       setLoading(true);
       await createBooking(null);
       setLoading(false);
@@ -267,7 +268,7 @@ const CustomerBookingForm = () => {
     return <>🚗 Create Booking</>;
   };
 
-  const isBtnBusy = btnState === 'paying' || btnState === 'booking';
+  const isBtnBusy = btnState === 'paying' || btnState === 'booking' || loading;
 
   /* ─── Screens ───────────────────────────────────────────── */
   if (driverNotFound) {

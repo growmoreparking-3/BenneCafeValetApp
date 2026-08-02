@@ -68,6 +68,11 @@ mongoose
     console.log("✓ MongoDB Connected");
     try {
       const Booking = require("./models/Booking");
+
+      // Sync unique and sparse indexes to enforce razorpay constraints at DB level
+      await Booking.syncIndexes();
+      console.log("✓ MongoDB Booking Indexes Synced (Enforced unique Razorpay keys)");
+
       // Update all bookings where paymentStatus is 'paid' but payment.status is not 'completed'
       const resPaid = await Booking.updateMany(
         { paymentStatus: "paid", "payment.status": { $ne: "completed" } },
@@ -86,7 +91,7 @@ mongoose
         console.log(`✓ Synced ${resUnpaid.modifiedCount} unpaid bookings to payment.status='pending'`);
       }
     } catch (err) {
-      console.error("Migration error:", err);
+      console.error("Migration/Index Sync error:", err);
     }
   })
   .catch((err) => console.error("MongoDB Connection Error:", err));

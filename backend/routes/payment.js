@@ -250,8 +250,29 @@ router.post('/webhook', async (req, res) => {
       status: 'parked'
     });
 
-    await booking.save();
-    await booking.populate('driver', 'name phone');
+    try {
+      await booking.save();
+      await booking.populate('driver', 'name phone');
+    } catch (saveError) {
+      if (saveError.code === 11000 && (
+        saveError.message.includes('orderId') || 
+        saveError.message.includes('paymentId') || 
+        (saveError.keyValue && (saveError.keyValue['payment.razorpay.orderId'] || saveError.keyValue['payment.razorpay.paymentId']))
+      )) {
+        console.log(`✓ Webhook Race Condition Handled: Booking was inserted by public redirect for order ${orderId}`);
+        const existingBooking = await Booking.findOne({
+          $or: [
+            { 'payment.razorpay.orderId': orderId },
+            { 'payment.razorpay.paymentId': paymentId }
+          ]
+        }).populate('driver', 'name phone');
+
+        if (existingBooking) {
+          return res.status(200).json({ status: 'ok', message: 'Booking already exists', bookingId: existingBooking.bookingId });
+        }
+      }
+      throw saveError;
+    }
 
     console.log(`🎉 Webhook: Successfully auto-created booking ${booking.bookingId} for order ${orderId}`);
 
