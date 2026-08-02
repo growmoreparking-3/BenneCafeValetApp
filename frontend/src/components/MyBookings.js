@@ -344,17 +344,40 @@ const MyBookings = () => {
   const [activeTab,         setActiveTab]         = useState('recalled');
   const [editingBooking,    setEditingBooking]    = useState(null);  // booking being edited
   const [arrivalTimes,      setArrivalTimes]      = useState({});
+  const [dateFilter,        setDateFilter]        = useState('today'); // 'today' | '7days' | 'month' | 'all'
+
+  const getDateParams = () => {
+    const now = new Date();
+    if (dateFilter === 'today') {
+      const from = new Date(now);
+      from.setHours(0, 0, 0, 0);
+      return `&from=${from.toISOString()}`;
+    }
+    if (dateFilter === '7days') {
+      const from = new Date(now);
+      from.setDate(from.getDate() - 7);
+      from.setHours(0, 0, 0, 0);
+      return `&from=${from.toISOString()}`;
+    }
+    if (dateFilter === 'month') {
+      const from = new Date(now);
+      from.setDate(from.getDate() - 30);
+      from.setHours(0, 0, 0, 0);
+      return `&from=${from.toISOString()}`;
+    }
+    return ''; // 'all'
+  };
 
   useEffect(() => {
     fetchBookings();
     fetchCompletedBookings();
-  }, []);
+  }, [dateFilter]);
 
   const [processingId,      setProcessingId]      = useState(null);
 
   const fetchBookings = async () => {
     try {
-      const res = await api.get('/bookings/my-bookings');
+      const res = await api.get(`/bookings/my-bookings?${getDateParams()}`);
       setBookings(res.data.bookings);
     } catch {
       toast.error('Failed to fetch bookings');
@@ -365,7 +388,7 @@ const MyBookings = () => {
 
   const fetchCompletedBookings = async () => {
     try {
-      const res = await api.get('/bookings/my-bookings?status=completed');
+      const res = await api.get(`/bookings/my-bookings?status=completed${getDateParams()}`);
       setCompletedBookings(res.data.bookings);
     } catch { console.error('Failed to fetch completed bookings'); }
   };
@@ -488,7 +511,33 @@ const MyBookings = () => {
       </AnimatePresence>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="my-bookings-container">
-        <h2>My Bookings</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <h2 style={{ margin: 0 }}>My Bookings</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#6B7280' }}>Date:</span>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '2px solid #E5E7EB',
+                background: 'white',
+                fontSize: '13px',
+                fontWeight: '700',
+                color: '#374151',
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif'
+              }}
+            >
+              <option value="today">Today</option>
+              <option value="7days">Last 7 Days</option>
+              <option value="month">Last Month</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
+        </div>
 
         {/* Tabs */}
         <div className="bookings-tabs">
@@ -587,7 +636,7 @@ const MyBookings = () => {
                           </div>
 
                           {/* Payment status pill — tap to toggle */}
-                          {isCash && (
+                          {!isRazorpay && (
                             booking.paymentStatus === 'paid' ? (
                               <button
                                 onClick={() => handleTogglePaymentStatus(booking)}
@@ -794,7 +843,7 @@ const MyBookings = () => {
                             </div>
 
                           {/* Payment status pill — tap to toggle */}
-                          {isCash && (
+                          {!isRazorpay && (
                             booking.paymentStatus === 'paid' ? (
                               <button
                                 onClick={() => handleTogglePaymentStatus(booking)}

@@ -234,7 +234,7 @@ router.post('/',
 // Get Driver's Bookings
 router.get('/my-bookings', auth, authorize('driver'), async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, from, to } = req.query;
     const query = { driver: req.user._id };
     
     console.log('Fetching bookings for driver:', req.user._id);
@@ -246,11 +246,22 @@ router.get('/my-bookings', auth, authorize('driver'), async (req, res) => {
       query.status = { $nin: ['completed', 'cancelled'] };
     }
 
+    // Date range filter
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to) {
+        const endDate = new Date(to);
+        endDate.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = endDate;
+      }
+    }
+
     const bookings = await Booking.find(query)
       .sort({ createdAt: -1 })
       .populate('driver', 'name phone');
 
-    console.log(`Found ${bookings.length} bookings for driver`);
+    console.log(`Found ${bookings.length} bookings for driver (status: ${status || 'active'}, range: ${from || ''} to ${to || ''})`);
     res.json({ bookings });
   } catch (error) {
     console.error('Get bookings error:', error);
