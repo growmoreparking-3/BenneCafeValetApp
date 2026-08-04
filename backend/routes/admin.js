@@ -916,10 +916,10 @@ router.get('/revenue-stats/custom', auth, authorize('admin', 'manager', 'supervi
         {
           $group: {
             _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
-              day: { $dayOfMonth: '$createdAt' },
-              hour: { $hour: '$createdAt' }
+              year: { $year: { date: '$createdAt', timezone: 'Asia/Kolkata' } },
+              month: { $month: { date: '$createdAt', timezone: 'Asia/Kolkata' } },
+              day: { $dayOfMonth: { date: '$createdAt', timezone: 'Asia/Kolkata' } },
+              hour: { $hour: { date: '$createdAt', timezone: 'Asia/Kolkata' } }
             },
             amount: { $sum: '$payment.amount' },
             count: { $sum: 1 }
@@ -1134,4 +1134,3 @@ router.delete('/managers/:id', auth, authorize('admin'), async (req, res) => {
 });
 
 module.exports = router;
-
