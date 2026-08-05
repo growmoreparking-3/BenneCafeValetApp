@@ -550,7 +550,7 @@ const SupervisorDashboard = () => {
                         const isActive = booking.status !== 'completed';
                         return (
                           <tr key={booking._id}>
-                            <td style={{ color: '#9CA3AF', fontSize: 12, fontWeight: 600, textAlign: 'center' }}>{idx + 1}</td>
+                            <td style={{ color: '#9CA3AF', fontSize: 12, fontWeight: 700, textAlign: 'center' }}><strong>{idx + 1}</strong></td>
                             <td><strong>{booking.bookingId}</strong></td>
                             <td>
                               {booking.customer?.name || booking.customer?.phone}<br/>

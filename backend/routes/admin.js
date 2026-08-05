@@ -911,15 +911,21 @@ router.get('/revenue-stats/custom', auth, authorize('admin', 'manager', 'supervi
 
     if (diffDays <= 3) {
       // ── HOURLY BREAKDOWN (for single day or up to 3-day range) ──
+      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // +05:30 in milliseconds
       const hourlyData = await Booking.aggregate([
         { $match: baseMatch },
         {
+          $addFields: {
+            createdAtIST: { $add: ['$createdAt', IST_OFFSET_MS] }
+          }
+        },
+        {
           $group: {
             _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
-              day: { $dayOfMonth: '$createdAt' },
-              hour: { $hour: '$createdAt' }
+              year:  { $year:       '$createdAtIST' },
+              month: { $month:      '$createdAtIST' },
+              day:   { $dayOfMonth: '$createdAtIST' },
+              hour:  { $hour:       '$createdAtIST' }
             },
             amount: { $sum: '$payment.amount' },
             count: { $sum: 1 }
@@ -928,41 +934,53 @@ router.get('/revenue-stats/custom', auth, authorize('admin', 'manager', 'supervi
         { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.hour': 1 } }
       ]);
 
-      // Build a map for quick lookup
+      // Build a map for quick lookup (keys are IST-based)
       const hourlyMap = {};
       hourlyData.forEach(h => {
         const key = `${h._id.year}-${String(h._id.month).padStart(2,'0')}-${String(h._id.day).padStart(2,'0')}-${String(h._id.hour).padStart(2,'0')}`;
         hourlyMap[key] = { amount: h.amount, count: h.count };
       });
 
-      // Fill every hour in the range with 0 if no data
+      // Fill every hour in the range with 0 if no data.
+      // Cursor is in IST: fromDate is already midnight IST (set by the API caller)
       hourlyBreakdown = [];
       const cursor = new Date(fromDate);
-      cursor.setHours(0, 0, 0, 0);
       while (cursor <= toDate) {
-        const hour = cursor.getHours();
-        const key = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}-${String(hour).padStart(2,'0')}`;
+        // Convert cursor to IST to build the matching key
+        const istMs = cursor.getTime() + IST_OFFSET_MS;
+        const istDate = new Date(istMs);
+        const year  = istDate.getUTCFullYear();
+        const month = istDate.getUTCMonth() + 1;
+        const day   = istDate.getUTCDate();
+        const hour  = istDate.getUTCHours();
+        const key = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}-${String(hour).padStart(2,'0')}`;
         const ampm = hour === 0 ? '12am' : hour < 12 ? `${hour}am` : hour === 12 ? '12pm' : `${hour-12}pm`;
-        const dayLabel = diffDays > 1 ? ` ${cursor.toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}` : '';
+        const dayLabel = diffDays > 1 ? ` ${istDate.toLocaleDateString('en-IN', { day:'2-digit', month:'short', timeZone: 'Asia/Kolkata' })}` : '';
         hourlyBreakdown.push({
           label: `${ampm}${dayLabel}`,
           hour,
-          date: cursor.toISOString().split('T')[0],
+          date: `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`,
           amount: hourlyMap[key]?.amount || 0,
           count: hourlyMap[key]?.count || 0
         });
-        cursor.setHours(cursor.getHours() + 1);
+        cursor.setTime(cursor.getTime() + 60 * 60 * 1000); // advance by 1 hour
       }
     } else {
       // ── DAILY BREAKDOWN (for ranges > 3 days) ──
+      const IST_OFFSET_MS_D = 5.5 * 60 * 60 * 1000;
       const dailyData = await Booking.aggregate([
         { $match: baseMatch },
         {
+          $addFields: {
+            createdAtIST: { $add: ['$createdAt', IST_OFFSET_MS_D] }
+          }
+        },
+        {
           $group: {
             _id: {
-              year: { $year: '$createdAt' },
-              month: { $month: '$createdAt' },
-              day: { $dayOfMonth: '$createdAt' }
+              year:  { $year:       '$createdAtIST' },
+              month: { $month:      '$createdAtIST' },
+              day:   { $dayOfMonth: '$createdAtIST' }
             },
             amount: { $sum: '$payment.amount' },
             count: { $sum: 1 }
@@ -979,16 +997,21 @@ router.get('/revenue-stats/custom', auth, authorize('admin', 'manager', 'supervi
 
       dailyBreakdown = [];
       const cursor = new Date(fromDate);
-      cursor.setHours(0, 0, 0, 0);
       while (cursor <= toDate) {
-        const key = cursor.toISOString().split('T')[0];
+        // Convert cursor to IST for consistent key matching
+        const istMs = cursor.getTime() + IST_OFFSET_MS_D;
+        const istDate = new Date(istMs);
+        const year  = istDate.getUTCFullYear();
+        const month = istDate.getUTCMonth() + 1;
+        const day   = istDate.getUTCDate();
+        const key = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         dailyBreakdown.push({
           date: key,
-          label: cursor.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+          label: istDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' }),
           amount: dailyMap[key]?.amount || 0,
           count: dailyMap[key]?.count || 0
         });
-        cursor.setDate(cursor.getDate() + 1);
+        cursor.setTime(cursor.getTime() + 24 * 60 * 60 * 1000); // advance by 1 day
       }
     }
 
