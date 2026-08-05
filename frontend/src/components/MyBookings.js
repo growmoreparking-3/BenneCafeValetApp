@@ -545,7 +545,7 @@ const MyBookings = () => {
             🚗 Recalled ({bookings.filter(b => ['recall-requested','in-transit','arrived'].includes(b.status)).length})
           </button>
           <button className={`tab-btn ${activeTab === 'active'    ? 'active' : ''}`} onClick={() => setActiveTab('active')}>
-            Active ({bookings.length})
+            Active ({bookings.filter(b => b.status === 'parked').length})
           </button>
           <button className={`tab-btn ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')}>
             Completed ({completedBookings.length})
@@ -752,7 +752,7 @@ const MyBookings = () => {
         {/* Active Bookings */}
         {activeTab === 'active' && (
           <>
-            {bookings.length === 0 ? (
+            {bookings.filter(b => b.status === 'parked').length === 0 ? (
               <div className="empty-state">
                 <Car size={80} color="#CCC" />
                 <h3>No active bookings</h3>
@@ -761,10 +761,8 @@ const MyBookings = () => {
             ) : (
               <div className="bookings-grid">
                 {bookings
-                  .sort((a, b) => {
-                    const p = { 'recall-requested': 0, 'in-transit': 1, 'arrived': 2, 'parked': 3 };
-                    return (p[a.status] || 99) - (p[b.status] || 99);
-                  })
+                  .filter(b => b.status === 'parked')
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                   .map((booking, index) => {
                     const isRecalled = ['recall-requested', 'in-transit', 'arrived'].includes(booking.status);
                     const isRazorpay = booking.payment?.method === 'razorpay';
