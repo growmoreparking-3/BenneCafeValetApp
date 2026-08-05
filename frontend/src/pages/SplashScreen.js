@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import logoVideo from '../logo.mp4';
+import logo from '../logo.png';
 import './SplashScreen.css';
 
 const SplashScreen = () => {
   const navigate = useNavigate();
+  const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -24,13 +26,23 @@ const SplashScreen = () => {
         className="splash-content"
       >
         <div className="logo-container">
-          <video
-            src={logoVideo}
-            autoPlay
-            muted
-            playsInline
-            style={{ width: '100%', maxWidth: '380px', height: 'auto', borderRadius: '12px', display: 'block' }}
-          />
+          {videoFailed ? (
+            <img
+              src={logo}
+              alt="GrowMore Logo"
+              style={{ width: '100%', maxWidth: '280px', height: 'auto', borderRadius: '12px', display: 'block' }}
+            />
+          ) : (
+            <video
+              src={logoVideo}
+              autoPlay
+              muted
+              playsInline
+              webkit-playsinline="true"
+              onError={() => setVideoFailed(true)}
+              style={{ width: '100%', maxWidth: '380px', height: 'auto', borderRadius: '12px', display: 'block' }}
+            />
+          )}
         </div>
 
         <motion.p
